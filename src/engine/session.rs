@@ -132,7 +132,15 @@ impl BrowserSession {
                 .map_err(|e| anyhow::anyhow!("Failed to navigate to {}: {}", url, e))?;
             tab.wait_until_navigated()
                 .map_err(|e| anyhow::anyhow!("Failed to wait for navigation: {}", e))?;
-            let t = tab.get_title().unwrap_or_else(|_| "Loaded Page".to_string());
+            
+            // Allow Chromium V8 context to initialize and parse headers
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            
+            let mut t = tab.get_title().unwrap_or_default();
+            if t.is_empty() {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+                t = tab.get_title().unwrap_or_else(|_| "Loaded Page".to_string());
+            }
             let u = tab.get_url();
             Ok((t, u))
         })?;

@@ -34,7 +34,7 @@ impl FirecrawlExtractor {
                         }
                     }
                     "prices" => {
-                        if let Ok(re) = regex::Regex::new(r"[\$\€\£\¥]\s?\d+(?:[.,]\d{2})?") {
+                        if let Ok(re) = regex::Regex::new(r"[$€£¥]\s?\d+(?:[.,]\d{2})?") {
                             let prices: std::collections::HashSet<String> = re.find_iter(&body_text)
                                 .map(|m| m.as_str().to_string())
                                 .collect();

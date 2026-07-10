@@ -1,13 +1,7 @@
 use clap::{Parser, Subcommand};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod mcp;
-mod engine;
-mod session;
-mod extraction;
-mod agent;
-mod hidden_gems;
-mod observability;
+use nexusmcp::{mcp, observability};
 
 #[derive(Parser)]
 #[command(name = "nexusmcp")]
