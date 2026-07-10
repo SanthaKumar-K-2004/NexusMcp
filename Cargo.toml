@@ -1,0 +1,43 @@
+[package]
+name = "nexusmcp"
+version = "0.1.0"
+edition = "2021"
+authors = ["NexusMCP Team"]
+description = "The lightest, fastest & most powerful browser MCP server for AI agents"
+license = "Apache-2.0"
+repository = "https://github.com/nexusmcp/nexusmcp"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+tokio-rusqlite = "0.5"
+axum = { version = "0.7", features = ["macros"] }
+tower-http = { version = "0.5", features = ["cors"] }
+tower = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+scraper = "0.19"
+html2md = "0.2"
+thiserror = "1.0"
+prometheus = "0.13"
+lazy_static = "1.4"
+
+# Obscura - Lightweight headless browser engine (optional)
+obscura = { git = "https://github.com/h4ckf0r0day/obscura", optional = true }
+headless_chrome = { version = "1.0.22", features = ["fetch"] }
+base64 = "0.22.1"
+
+[features]
+default = []
+full = ["obscura"]
+
+[dev-dependencies]
+tokio-test = "0.4"

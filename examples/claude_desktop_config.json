@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "nexusmcp": {
+      "command": "/home/user/nexusmcp/target/release/nexusmcp",
+      "args": ["mcp", "--stealth"],
+      "env": {
+        "RUST_LOG": "nexusmcp=info"
+      }
+    }
+  }
+}
