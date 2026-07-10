@@ -55,6 +55,9 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // Initialize metrics
+    observability::init_metrics();
+
     let cli = Cli::parse();
 
     match cli.command {

@@ -1,5 +1,5 @@
 // Enterprise Observability Module
-use prometheus::{IntCounter, IntGauge, Histogram, Registry, Opts};
+use prometheus::{IntCounter, IntGauge, Histogram, Opts};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -17,14 +17,12 @@ lazy_static! {
         Opts::new("nexusmcp_page_load_time_seconds", "Page load time in seconds")
             .into()
     ).unwrap();
-
-    pub static ref REGISTRY: Registry = Registry::new();
 }
 
 pub fn init_metrics() {
-    let _ = REGISTRY.register(Box::new(NAVIGATION_COUNTER.clone()));
-    let _ = REGISTRY.register(Box::new(ACTIVE_SESSIONS.clone()));
-    let _ = REGISTRY.register(Box::new(PAGE_LOAD_TIME.clone()));
+    let _ = prometheus::register(Box::new(NAVIGATION_COUNTER.clone()));
+    let _ = prometheus::register(Box::new(ACTIVE_SESSIONS.clone()));
+    let _ = prometheus::register(Box::new(PAGE_LOAD_TIME.clone()));
 }
 
 pub fn record_navigation() {

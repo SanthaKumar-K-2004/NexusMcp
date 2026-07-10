@@ -59,6 +59,7 @@ impl SessionManager {
         
         let session = BrowserSession::new(session_id.clone(), profile_id);
         self.sessions.insert(session_id.clone(), session);
+        crate::observability::set_active_sessions(self.sessions.len() as i64);
         Ok(session_id)
     }
 
@@ -98,7 +99,6 @@ impl std::fmt::Debug for BrowserSession {
 }
 
 
-
 impl BrowserSession {
     pub fn new(id: String, profile_id: Option<String>) -> Self {
         Self {
@@ -125,6 +125,7 @@ impl BrowserSession {
             t
         };
 
+        let start = std::time::Instant::now();
         // Navigate inside block_in_place to prevent blocking async tasks
         let (title, actual_url) = tokio::task::block_in_place(|| -> Result<(String, String)> {
             tab.navigate_to(url)
@@ -135,13 +136,16 @@ impl BrowserSession {
             let u = tab.get_url();
             Ok((t, u))
         })?;
+        let duration = start.elapsed().as_secs_f64();
+        crate::observability::record_navigation();
+        crate::observability::record_page_load_time(duration);
 
         let page_state = PageState {
             id: page_id.clone(),
             url: actual_url,
             title: title.clone(),
             status: "loaded".to_string(),
-            load_time_ms: 150,
+            load_time_ms: (duration * 1000.0) as u64,
         };
 
         // Add to history
