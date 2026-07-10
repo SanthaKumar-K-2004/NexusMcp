@@ -2193,6 +2193,7 @@ dependencies = [
  "lazy_static",
  "obscura",
  "prometheus",
+ "regex",
  "reqwest",
  "rusqlite",
  "scraper",
