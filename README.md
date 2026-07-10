@@ -1,38 +1,86 @@
-# 🌐 NexusMCP
+<p align="center">
+  <img src="./nexusmcp_logo.jpg" width="220" alt="NexusMCP Logo">
+</p>
 
-**The lightest, fastest, and most powerful enterprise-grade browser MCP server for AI agents.**
+<h1 align="center">⚡ NexusMCP ⚡</h1>
 
-NexusMCP is a production-ready Rust-based Model Context Protocol (MCP) server that empowers AI models (Claude, Cursor, Roo Code, etc.) with real, stealth-guided, headless browser automation capabilities.
+<p align="center">
+  <strong>The lightest, fastest, and most robust enterprise-grade browser Model Context Protocol (MCP) server for AI agents.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language Rust">
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License Apache 2.0">
+  <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome">
+  <img src="https://img.shields.io/badge/Platform-Arch%20Linux%20%7C%20Ubuntu%20%7C%20macOS-blueviolet.svg" alt="Platform">
+</p>
+
+<p align="center">
+  Developed & Maintained by <strong><a href="https://github.com/SanthaKumar-K-2004">Santhakumar K</a></strong>
+</p>
 
 ---
 
-## ⚡ Quick Start: One-Command Auto-Configurator
+## 📖 Table of Contents
+1. [⚡ Quick Start: One-Command Setup](#-quick-start-one-command-setup)
+2. [🎯 Features & Capabilities](#-features--capabilities)
+3. [🏗️ Architecture Flow](#️-architecture-flow)
+4. [🛠️ Client Configuration](#️-client-configuration)
+5. [💻 Manual Installation](#-manual-installation)
+6. [📈 Prometheus Observability](#-prometheus-observability)
+7. [🤝 Developed By](#-developed-by)
+8. [📄 License](#-license)
 
-Run this single command to automatically compile the server, detect your operating system, and configure your Claude Desktop / VS Code MCP settings safely:
+---
+
+## ⚡ Quick Start: One-Command Setup
+
+NexusMCP comes with an **automatic zero-config installer** (`setup.py`). It compiles the release binary, auto-detects configuration directories, and safely updates settings for **Claude Desktop, Cursor, and VS Code (Cline/Roo Code)** without disrupting existing MCP setups.
+
+Run this simple command in your terminal:
 
 ```bash
-# Clone the repository and run the auto-configurator
 git clone https://github.com/SanthaKumar-K-2004/NexusMcp.git && cd NexusMcp && python3 setup.py
 ```
 
 ---
 
-## 🚀 Key Features
+## 🎯 Features & Capabilities
 
-*   **Real Headless Browser Automation**: Drives dynamic page rendering using Chromium via Chrome DevTools Protocol (`headless_chrome`).
-*   **Self-Healing Navigation**: Automatically upgrades stealth levels and retries navigation when encountering CAPTCHAs, bot challenges, or page timeouts.
-*   **Stealth & Anti-Bot Footprint Bypasses**: Spoofs `navigator.webdriver`, timezone settings, language parameters, and user-agent strings on document load to slip past Cloudflare, Akamai, and other detectors.
-*   **Stagehand Semantic Element Locators**: Locate buttons, inputs, and anchors using natural language queries scored dynamically on the live DOM tree.
-*   **Structured Firecrawl-style Extraction**: Extract emails, prices, and DOM content matching user-supplied JSON schemas using fast, compiled regular expressions.
-*   **Persistent Profiles (SQLite)**: Create and load persistent user profiles with proxy and custom stealth settings stored securely in SQLite.
-*   **Media Captures**: Capture base64 PNG screenshots and print pages to base64 PDFs dynamically.
+NexusMCP replaces slow, heavy, mock-based browser integrations with a **native Rust DevTools engine**:
+
+- 🌐 **100% Real Browser Control**: Leverages actual headless Chromium/V8 instances via Chrome DevTools Protocol (`headless_chrome`).
+- 🛡️ **Anti-Bot & Stealth Engine**: Spoofs `navigator.webdriver`, User-Agents, locale, and timezone settings on document load to evade Cloudflare, Akamai, and web application firewalls.
+- 🩺 **Self-Healing Navigation**: Retries with rotative User-Agents and automated CDP stealth scripts if a block or CAPTCHA is detected.
+- 🎯 **Stagehand Semantic Locators**: Evaluates element selectors dynamically based on weighted parameters (placeholder, accessibility labels, class, name) to locate target elements using natural language.
+- 🕷️ **Structured Firecrawl-style Extraction**: Extract emails, prices, links, and schema-specific details using high-speed compiled regular expressions.
+- 💾 **SQLite Profiles**: Secure cookie and configuration persistence across browsing sessions.
+- 📊 **Observability & Metrics**: Exposes Prometheus metrics (`active_sessions`, `navigation_counter`, `page_load_time_seconds`) out of the box.
 
 ---
 
-## 🛠️ MCP Clients Configuration
+## 🏗️ Architecture Flow
+
+```mermaid
+graph TD
+    Client[AI Client: Claude, Cursor, Roo Code] -->|Stdio/HTTP JSON-RPC| NexusMCP[NexusMCP Server]
+    subgraph NexusMCP Core
+        SM[Session Manager] -->|Browser Context| Tab[Chromium Tab Instance]
+        Tab -->|CDP| Stealth[Anti-Bot Evasions]
+        Tab -->|DOM Scrape| Stagehand[Stagehand Semantic Locators]
+        Tab -->|Page Body| Firecrawl[Firecrawl Schema Regex]
+        SM -->|Persistent DB| SQLite[(SQLite Profile Store)]
+        SM -->|Observability| Prom[Prometheus Registry]
+    end
+    Tab -->|Headless Control| Chrome[Headless Chromium / Chrome]
+```
+
+---
+
+## 🛠️ Client Configuration
 
 ### 1. Claude Desktop & VS Code (Cline / Roo Code)
-The `setup.py` script automatically configures these for you. If you need to manually modify them, add this configuration block:
+The setup script completes this automatically. The generated JSON configuration looks like this:
 
 ```json
 {
@@ -45,32 +93,53 @@ The `setup.py` script automatically configures these for you. If you need to man
 }
 ```
 
-### 2. Cursor Desktop
-*   Go to **Settings** -> **Cursor Settings** -> **Features** -> **MCP**.
-*   Click **+ Add New MCP Server**.
-*   Enter:
-    *   **Name**: `nexusmcp`
-    *   **Type**: `command`
-    *   **Command**: `/absolute/path/to/nexusmcp/target/release/nexusmcp`
-    *   **Arguments**: `mcp --stealth`
+### 2. Cursor
+1. Navigate to **Settings** ➡️ **Cursor Settings** ➡️ **Features** ➡️ **MCP**.
+2. Click **+ Add New MCP Server**.
+3. Apply the parameters:
+   - **Name**: `nexusmcp`
+   - **Type**: `command`
+   - **Command**: `/absolute/path/to/nexusmcp/target/release/nexusmcp`
+   - **Arguments**: `mcp --stealth`
 
 ---
 
-## 💻 Manual Setup
+## 💻 Manual Installation
 
 ```bash
-# Compile optimized release binary
+# 1. Compile release binary
 cargo build --release
 
-# Run MCP server (stdio mode)
+# 2. Run MCP stdio server
 ./target/release/nexusmcp mcp --stealth
 
-# Run as standalone HTTP server
+# 3. Or run as standalone HTTP server
 ./target/release/nexusmcp serve --port 3000 --stealth
 ```
 
 ---
 
+## 📈 Prometheus Observability
+
+NexusMCP exposes a Prometheus scraper endpoint on HTTP server mode:
+
+```bash
+curl http://localhost:3000/metrics
+```
+
+Available metrics:
+*   `nexusmcp_active_sessions`: Gauge of currently active Chromium tabs.
+*   `nexusmcp_navigation_counter`: Total page navigations triggered.
+*   `nexusmcp_page_load_time_seconds`: Page load time durations histogram.
+
+---
+
+## 🤝 Developed By
+
+Designed, written, and maintained by **[Santhakumar K](https://github.com/SanthaKumar-K-2004)**. Contributions, bug reports, and pull requests are welcome!
+
+---
+
 ## 📄 License
 
-Apache 2.0
+Apache 2.0 License.
