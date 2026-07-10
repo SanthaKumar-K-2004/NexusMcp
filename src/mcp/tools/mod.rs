@@ -182,7 +182,7 @@ impl ToolRegistry {
         // === 1. Real Error Recovery + Stealth Escalation ===
         let detection = self.crawl4ai.detect_protection(url, "");
         let protection = detection["protection_level"].as_str().unwrap_or("low");
-        let initial_stealth = if protection == "high" { "high" } else { "medium" };
+        let mut stealth_level = if protection == "high" { "high" } else { "medium" };
 
         // === 2. Profile Persistence Integration ===
         let session_id = if let Some(pid) = profile_id {
@@ -192,46 +192,88 @@ impl ToolRegistry {
             self.session_manager.create_session(None)?
         };
 
-        // === 3. Better Stealth Application ===
-        let stealth_result = self.stealth_engine.apply_stealth(initial_stealth);
-
         let browser = self.session_manager.get_or_create_browser()?;
+        let mut attempts = 0;
+        let max_attempts = 2;
+        let mut page_result = None;
 
-        if let Some(session) = self.session_manager.get_session_mut(&session_id) {
-            let page = session.navigate(url, &browser).await?;
-            
-            self.memory.push(format!("Navigated to: {}", url));
-            self.vector_memory.store(url, &format!("Visited page: {}", page.title));
+        while attempts < max_attempts {
+            attempts += 1;
+            let session = self.session_manager.get_session_mut(&session_id)
+                .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
-            let response = serde_json::json!({
-                "success": true,
-                "session_id": session_id,
-                "page": {
-                    "id": page.id,
-                    "url": page.url,
-                    "title": page.title,
-                    "status": page.status,
-                    "load_time_ms": page.load_time_ms
-                },
-                "wait_until": wait_until,
-                "protection_level": protection,
-                "stealth_level": initial_stealth,
-                "stealth_applied": stealth_result,
-                "profile_used": profile_id,
-                "current_page_count": session.pages.len(),
-                "message": "REAL navigation with error recovery, profile & stealth"
-            });
-            
-            Ok(serde_json::to_string_pretty(&response)?)
-        } else {
-            let retry_stealth = "high";
-            let _retry_result = self.stealth_engine.apply_stealth(retry_stealth);
-            
-            Err(anyhow::anyhow!(
-                "Navigation failed. Auto-retrying with {} stealth.", 
-                retry_stealth
-            ))
+            // === 3. Inject Stealth Settings via CDP on Document Creation ===
+            let user_agent = match stealth_level {
+                "high" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                _ => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            };
+            let ua_script = format!(
+                r#"Object.defineProperty(navigator, 'userAgent', {{ get: () => '{}' }});
+                   Object.defineProperty(navigator, 'webdriver', {{ get: () => false }});
+                   Object.defineProperty(navigator, 'languages', {{ get: () => ['en-US', 'en'] }});"#,
+                user_agent
+            );
+
+            if let Some(tab) = &session.tab {
+                let _ = tokio::task::block_in_place(|| {
+                    let _ = tab.call_method(headless_chrome::protocol::cdp::Page::AddScriptToEvaluateOnNewDocument {
+                        source: ua_script.to_string(),
+                        world_name: None,
+                        include_command_line_api: None,
+                        run_immediately: None,
+                    });
+                    let _ = tab.evaluate(&ua_script, false);
+                });
+            }
+
+            match session.navigate(url, &browser).await {
+                Ok(page) => {
+                    // Check if content has captcha or cloudflare challenge
+                    let html = session.get_current_html().unwrap_or_default();
+                    if (html.contains("cf-challenge") || html.contains("captcha") || html.contains("cloudflare")) && stealth_level != "high" {
+                        tracing::warn!("CAPTCHA / Bot Protection detected. Upgrading to high stealth and retrying navigation...");
+                        stealth_level = "high";
+                        continue;
+                    }
+                    page_result = Some(page);
+                    break;
+                }
+                Err(e) => {
+                    if attempts >= max_attempts {
+                        return Err(anyhow::anyhow!("Navigation failed after {} attempts: {}", attempts, e));
+                    }
+                    tracing::warn!("Navigation failed: {}. Retrying with high-stealth evasion parameters...", e);
+                    stealth_level = "high";
+                }
+            }
         }
+
+        let page = page_result.ok_or_else(|| anyhow::anyhow!("Navigation failed to resolve successfully"))?;
+        let session = self.session_manager.get_session(&session_id)
+            .ok_or_else(|| anyhow::anyhow!("Session not found after navigation"))?;
+
+        self.memory.push(format!("Navigated to: {}", url));
+        self.vector_memory.store(url, &format!("Visited page: {}", page.title));
+
+        let response = serde_json::json!({
+            "success": true,
+            "session_id": session_id,
+            "page": {
+                "id": page.id,
+                "url": page.url,
+                "title": page.title,
+                "status": page.status,
+                "load_time_ms": page.load_time_ms
+            },
+            "wait_until": wait_until,
+            "protection_level": protection,
+            "stealth_level": stealth_level,
+            "profile_used": profile_id,
+            "current_page_count": session.pages.len(),
+            "message": "REAL self-healing navigation with dynamic bot-protection evasion & retries"
+        });
+
+        Ok(serde_json::to_string_pretty(&response)?)
     }
 
     async fn handle_evaluate(&mut self, arguments: Value) -> Result<String> {
@@ -282,6 +324,9 @@ impl ToolRegistry {
             .ok_or_else(|| anyhow::anyhow!("No active browser tab found or html empty"))?;
 
         let markdown = self.extractor.html_to_markdown(&html, "https://nexusmcp.local")?;
+        
+        let url = session.current_page_state().map(|p| p.url.clone()).unwrap_or_else(|| "https://nexusmcp.local".to_string());
+        self.vector_memory.store(&url, &markdown);
         
         self.memory.push("Extracted Markdown from real page".to_string());
 
@@ -552,42 +597,8 @@ impl ToolRegistry {
         let html = session.get_current_html()
             .ok_or_else(|| anyhow::anyhow!("No page loaded to find elements"))?;
             
-        let document = scraper::Html::parse_document(&html);
-        let mut matched_selector = "body".to_string();
-        let mut role = "generic";
-        
-        let keywords = instruction.to_lowercase();
-        if keywords.contains("input") || keywords.contains("email") || keywords.contains("text") {
-            let sel = scraper::Selector::parse("input").unwrap();
-            if document.select(&sel).next().is_some() {
-                matched_selector = "input".to_string();
-                role = "textbox";
-            }
-        } else if keywords.contains("button") || keywords.contains("submit") || keywords.contains("click") {
-            let sel = scraper::Selector::parse("button, input[type='submit']").unwrap();
-            if document.select(&sel).next().is_some() {
-                matched_selector = "button".to_string();
-                role = "button";
-            }
-        } else if keywords.contains("link") || keywords.contains("href") {
-            let sel = scraper::Selector::parse("a").unwrap();
-            if document.select(&sel).next().is_some() {
-                matched_selector = "a".to_string();
-                role = "link";
-            }
-        }
-        
-        let response = serde_json::json!({
-            "success": true,
-            "instruction": instruction,
-            "element": {
-                "selector": matched_selector,
-                "role": role,
-                "confidence": 0.85
-            },
-            "method": "Stagehand-style semantic fallback"
-        });
-        Ok(serde_json::to_string_pretty(&response)?)
+        let res = self.stagehand.find_element(instruction, &html);
+        Ok(serde_json::to_string_pretty(&res)?)
     }
 
     async fn handle_trafilatura(&mut self, _arguments: Value) -> Result<String> {

@@ -34,6 +34,7 @@ lazy_static = "1.4"
 obscura = { git = "https://github.com/h4ckf0r0day/obscura", optional = true }
 headless_chrome = { version = "1.0.22", features = ["fetch"] }
 base64 = "0.22.1"
+regex = "1.10"
 
 [features]
 default = []
