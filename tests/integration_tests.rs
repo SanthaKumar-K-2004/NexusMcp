@@ -1,13 +1,13 @@
+use axum::{response::Html, routing::get, Router};
 use nexusmcp::engine::session::SessionManager;
-use nexusmcp::hidden_gems::stagehand::StagehandEngine;
-use nexusmcp::hidden_gems::firecrawl_extraction::FirecrawlExtractor;
-use nexusmcp::hidden_gems::trafilatura::TrafilaturaExtractor;
-use nexusmcp::hidden_gems::crawl4ai::Crawl4AIDetector;
-use nexusmcp::hidden_gems::stealth::PlaywrightStealth;
 use nexusmcp::extraction::AdvancedExtractor;
+use nexusmcp::hidden_gems::crawl4ai::Crawl4AIDetector;
+use nexusmcp::hidden_gems::firecrawl_extraction::FirecrawlExtractor;
+use nexusmcp::hidden_gems::stagehand::StagehandEngine;
+use nexusmcp::hidden_gems::stealth::PlaywrightStealth;
+use nexusmcp::hidden_gems::trafilatura::TrafilaturaExtractor;
 use nexusmcp::session::ProfileManager;
 use serde_json::json;
-use axum::{routing::get, response::Html, Router};
 
 /// Helper: spins up a local test HTTP server and returns the base URL.
 async fn start_test_server() -> String {
@@ -73,7 +73,7 @@ async fn test_real_browser_and_hidden_gems_flow() -> Result<(), anyhow::Error> {
     // Initialize SessionManager and Browser
     let mut manager = SessionManager::new();
     let browser = manager.get_or_create_browser()?;
-    
+
     let session_id = manager.create_session(None)?;
     let session = manager.get_session_mut(&session_id).unwrap();
 
@@ -82,7 +82,7 @@ async fn test_real_browser_and_hidden_gems_flow() -> Result<(), anyhow::Error> {
     assert_eq!(page.title, "NexusMCP Integration Test Page");
     assert_eq!(page.status, "loaded");
     assert!(page.load_time_ms > 0);
-    
+
     let html = session.get_current_html().unwrap();
     assert!(html.contains("Real Browser E2E Rendering Working"));
 
@@ -130,10 +130,16 @@ async fn test_real_browser_and_hidden_gems_flow() -> Result<(), anyhow::Error> {
     });
     let extraction = firecrawl.extract_with_schema(&html, schema);
     let data = &extraction["extracted_data"];
-    
+
     assert_eq!(data["title"], "NexusMCP Integration Test Page");
-    assert!(data["emails"].as_array().unwrap().contains(&json!("support@nexusmcp.dev")));
-    assert!(data["prices"].as_array().unwrap().contains(&json!("$99.99")));
+    assert!(data["emails"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("support@nexusmcp.dev")));
+    assert!(data["prices"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("$99.99")));
 
     // Test Markdown Extraction
     let extractor = AdvancedExtractor::new();
@@ -167,7 +173,11 @@ async fn test_browser_back_and_reload() -> Result<(), anyhow::Error> {
 
     // Go back to page 1
     let back_page = session.go_back().await?;
-    assert!(back_page.url.contains(&local_url) || back_page.title.contains("NexusMCP") || back_page.title == "Loaded Page");
+    assert!(
+        back_page.url.contains(&local_url)
+            || back_page.title.contains("NexusMCP")
+            || back_page.title == "Loaded Page"
+    );
 
     // Reload
     let reloaded = session.reload().await?;
@@ -194,7 +204,9 @@ async fn test_tab_management() -> Result<(), anyhow::Error> {
     assert_eq!(session.pages.len(), 1);
 
     // Open a new tab
-    let new_tab_page = session.new_tab(Some(&format!("{}/about", local_url)), &browser).await?;
+    let new_tab_page = session
+        .new_tab(Some(&format!("{}/about", local_url)), &browser)
+        .await?;
     assert_eq!(new_tab_page.title, "About Page");
     assert_eq!(session.pages.len(), 2);
 
@@ -229,12 +241,17 @@ async fn test_screenshot_real_bytes() -> Result<(), anyhow::Error> {
     let png_bytes = tokio::task::block_in_place(|| {
         tab.capture_screenshot(
             headless_chrome::protocol::cdp::Page::CaptureScreenshotFormatOption::Png,
-            None, None, true,
+            None,
+            None,
+            true,
         )
     })?;
 
     // Real PNG file starts with the magic bytes 0x89 0x50 0x4E 0x47
-    assert!(png_bytes.len() > 100, "Screenshot should be more than 100 bytes");
+    assert!(
+        png_bytes.len() > 100,
+        "Screenshot should be more than 100 bytes"
+    );
     assert_eq!(png_bytes[0], 0x89, "PNG magic byte 1");
     assert_eq!(png_bytes[1], 0x50, "PNG magic byte 2 (P)");
     assert_eq!(png_bytes[2], 0x4E, "PNG magic byte 3 (N)");
@@ -275,10 +292,19 @@ async fn test_trafilatura_extraction() {
     assert_eq!(result["description"], "A major event happened");
 
     let content = result["content"].as_str().unwrap();
-    assert!(content.contains("Major Event"), "Should contain article heading");
-    assert!(content.contains("first paragraph"), "Should contain article body");
+    assert!(
+        content.contains("Major Event"),
+        "Should contain article heading"
+    );
+    assert!(
+        content.contains("first paragraph"),
+        "Should contain article body"
+    );
     // Should NOT contain nav or footer
-    assert!(!content.contains("analytics"), "Should strip script content");
+    assert!(
+        !content.contains("analytics"),
+        "Should strip script content"
+    );
 
     let word_count = result["word_count"].as_u64().unwrap();
     assert!(word_count > 10, "Should have substantial word count");
@@ -295,10 +321,15 @@ async fn test_crawl4ai_html_detection() {
     let cf_html = r#"<html><body><div class="cf-challenge-running">Checking your browser</div></body></html>"#;
     let result = detector.detect_protection("https://example.com", cf_html);
     assert_eq!(result["protection_level"], "high");
-    assert!(result["detections"].as_array().unwrap().iter().any(|d| d["type"] == "cloudflare"));
+    assert!(result["detections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["type"] == "cloudflare"));
 
     // Test reCAPTCHA detection
-    let recaptcha_html = r#"<html><body><div class="g-recaptcha" data-sitekey="key123"></div></body></html>"#;
+    let recaptcha_html =
+        r#"<html><body><div class="g-recaptcha" data-sitekey="key123"></div></body></html>"#;
     let result = detector.detect_protection("https://example.com", recaptcha_html);
     assert_eq!(result["protection_level"], "high");
 
@@ -321,10 +352,20 @@ async fn test_stealth_real_scripts() {
     let script = result["script"].as_str().unwrap();
     let techniques = result["techniques_applied"].as_array().unwrap();
 
-    assert!(script.contains("navigator"), "Script should override navigator");
+    assert!(
+        script.contains("navigator"),
+        "Script should override navigator"
+    );
     assert!(script.contains("webdriver"), "Script should hide webdriver");
-    assert!(script.contains("WebGLRenderingContext"), "High stealth should spoof WebGL");
-    assert!(techniques.len() >= 7, "High stealth should apply 7+ techniques, got {}", techniques.len());
+    assert!(
+        script.contains("WebGLRenderingContext"),
+        "High stealth should spoof WebGL"
+    );
+    assert!(
+        techniques.len() >= 7,
+        "High stealth should apply 7+ techniques, got {}",
+        techniques.len()
+    );
 
     // User agent should be a real-looking string
     let ua = result["user_agent"].as_str().unwrap();
@@ -333,7 +374,11 @@ async fn test_stealth_real_scripts() {
     // Low-level stealth should be minimal
     let low_result = stealth.apply_stealth("low");
     let low_techniques = low_result["techniques_applied"].as_array().unwrap();
-    assert_eq!(low_techniques.len(), 1, "Low stealth should only have webdriver_hide");
+    assert_eq!(
+        low_techniques.len(),
+        1,
+        "Low stealth should only have webdriver_hide"
+    );
 }
 
 // ==========================================================================
@@ -353,7 +398,11 @@ async fn test_stagehand_multi_candidates() {
     let candidates = result["candidates"].as_array().unwrap();
 
     // Should return multiple candidates
-    assert!(candidates.len() >= 2, "Should find at least 2 search-related elements, got {}", candidates.len());
+    assert!(
+        candidates.len() >= 2,
+        "Should find at least 2 search-related elements, got {}",
+        candidates.len()
+    );
     // Best match should be the search input
     assert_eq!(result["element"]["selector"], "#search-input");
 }
@@ -366,7 +415,7 @@ async fn test_profile_persistence_roundtrip() -> Result<(), anyhow::Error> {
     let mut db_path = std::env::temp_dir();
     db_path.push("test_nexusmcp_profiles.db");
     let db_path_str = db_path.to_str().unwrap().to_string();
-    
+
     // Clean up from previous runs
     let _ = std::fs::remove_file(&db_path_str);
 

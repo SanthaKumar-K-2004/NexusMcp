@@ -47,22 +47,13 @@ impl Crawl4AIDetector {
         }
 
         // hCaptcha
-        let hcaptcha_markers = [
-            "h-captcha",
-            "hcaptcha.com/1/api.js",
-            "hcaptcha-response",
-        ];
+        let hcaptcha_markers = ["h-captcha", "hcaptcha.com/1/api.js", "hcaptcha-response"];
         if hcaptcha_markers.iter().any(|m| html.contains(m)) {
             detections.push(json!({"type": "hcaptcha", "severity": "high"}));
         }
 
         // Akamai Bot Manager
-        let akamai_markers = [
-            "_abck",
-            "ak_bmsc",
-            "bm_sz",
-            "akamai",
-        ];
+        let akamai_markers = ["_abck", "ak_bmsc", "bm_sz", "akamai"];
         if akamai_markers.iter().any(|m| html.contains(m)) {
             detections.push(json!({"type": "akamai", "severity": "medium"}));
         }

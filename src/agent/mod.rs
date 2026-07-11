@@ -24,7 +24,7 @@ impl AgentEnhancer {
             .timeout(std::time::Duration::from_secs(10))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .build()?;
-            
+
         let mut tasks = Vec::new();
 
         for url in urls {
@@ -36,7 +36,7 @@ impl AgentEnhancer {
             let task = tokio::spawn(async move {
                 let _permit = permit;
                 let start = std::time::Instant::now();
-                
+
                 // Security check: reject local files in parallel research
                 if url.starts_with("file://") {
                     return json!({
@@ -52,7 +52,8 @@ impl AgentEnhancer {
                         let status = resp.status().as_u16();
                         if let Ok(text) = resp.text().await {
                             let doc = scraper::Html::parse_document(&text);
-                            let title = doc.select(&scraper::Selector::parse("title").unwrap())
+                            let title = doc
+                                .select(&scraper::Selector::parse("title").unwrap())
                                 .next()
                                 .map(|el| el.text().collect::<String>().trim().to_string())
                                 .unwrap_or_else(|| format!("Page: {}", url));
@@ -125,7 +126,10 @@ impl AgentEnhancer {
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .build()?;
 
-        let search_url = format!("https://html.duckduckgo.com/html/?q={}", urlencoding::encode(query));
+        let search_url = format!(
+            "https://html.duckduckgo.com/html/?q={}",
+            urlencoding::encode(query)
+        );
         let mut sources = Vec::new();
         let mut pages_visited = 0;
 

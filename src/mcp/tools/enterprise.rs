@@ -1,14 +1,22 @@
 use super::{Tool, ToolRegistry};
-use serde_json::{json, Value};
 use anyhow::Result;
+use serde_json::{json, Value};
 
 pub struct BrowserHandleCaptchaTool;
-impl BrowserHandleCaptchaTool { pub fn new() -> Self { Self } }
+impl BrowserHandleCaptchaTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserHandleCaptchaTool {
-    fn name(&self) -> &str { "browser_handle_captcha" }
-    fn description(&self) -> &str { "Detect bot protection (Cloudflare, reCAPTCHA, hCaptcha, etc.) on the current page." }
+    fn name(&self) -> &str {
+        "browser_handle_captcha"
+    }
+    fn description(&self) -> &str {
+        "Detect bot protection (Cloudflare, reCAPTCHA, hCaptcha, etc.) on the current page."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -24,12 +32,20 @@ impl Tool for BrowserHandleCaptchaTool {
 }
 
 pub struct BrowserHealthCheckTool;
-impl BrowserHealthCheckTool { pub fn new() -> Self { Self } }
+impl BrowserHealthCheckTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserHealthCheckTool {
-    fn name(&self) -> &str { "browser_health_check" }
-    fn description(&self) -> &str { "Check health: active sessions, browser state, registered tools." }
+    fn name(&self) -> &str {
+        "browser_health_check"
+    }
+    fn description(&self) -> &str {
+        "Check health: active sessions, browser state, registered tools."
+    }
     fn input_schema(&self) -> Value {
         json!({ "type": "object", "properties": {} })
     }
@@ -41,9 +57,16 @@ impl Tool for BrowserHealthCheckTool {
 // ==================== HANDLER IMPLEMENTATIONS ====================
 
 pub async fn handle_captcha(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let action = arguments.get("action").and_then(|v| v.as_str()).unwrap_or("detect");
+    let action = arguments
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("detect");
 
-    let html = if let Ok(h) = registry.get_active_html() { h } else { String::new() };
+    let html = if let Ok(h) = registry.get_active_html() {
+        h
+    } else {
+        String::new()
+    };
     let detection = registry.crawl4ai.detect_protection("", &html);
 
     let response = match action {
@@ -67,7 +90,8 @@ pub async fn handle_captcha(registry: &mut ToolRegistry, arguments: Value) -> Re
                     let tab_clone = tab.clone();
                     let _ = tokio::task::spawn_blocking(move || {
                         let _ = tab_clone.evaluate(&script_owned, false);
-                    }).await;
+                    })
+                    .await;
                 }
             }
             json!({
@@ -80,7 +104,7 @@ pub async fn handle_captcha(registry: &mut ToolRegistry, arguments: Value) -> Re
         _ => json!({
             "success": false,
             "message": format!("Unknown action: {}", action)
-        })
+        }),
     };
 
     Ok(serde_json::to_string_pretty(&response)?)

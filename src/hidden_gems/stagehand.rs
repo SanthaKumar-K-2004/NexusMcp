@@ -20,13 +20,15 @@ impl StagehandEngine {
         ).unwrap();
 
         let instruction_lower = instruction.to_lowercase();
-        let search_terms: Vec<&str> = instruction_lower.split_whitespace()
+        let search_terms: Vec<&str> = instruction_lower
+            .split_whitespace()
             .filter(|w| w.len() > 1) // skip single-char words
             .collect();
 
         // Collect label text for label[for] → input association
         let label_sel = scraper::Selector::parse("label[for]").ok();
-        let mut label_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut label_map: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
         if let Some(ref sel) = label_sel {
             for label_el in document.select(sel) {
                 if let Some(for_id) = label_el.value().attr("for") {
@@ -45,12 +47,24 @@ impl StagehandEngine {
             // Extract attributes
             let id = element.value().attr("id").unwrap_or("").to_lowercase();
             let name = element.value().attr("name").unwrap_or("").to_lowercase();
-            let placeholder = element.value().attr("placeholder").unwrap_or("").to_lowercase();
+            let placeholder = element
+                .value()
+                .attr("placeholder")
+                .unwrap_or("")
+                .to_lowercase();
             let class = element.value().attr("class").unwrap_or("").to_lowercase();
             let type_attr = element.value().attr("type").unwrap_or("").to_lowercase();
-            let aria_label = element.value().attr("aria-label").unwrap_or("").to_lowercase();
+            let aria_label = element
+                .value()
+                .attr("aria-label")
+                .unwrap_or("")
+                .to_lowercase();
             let aria_role = element.value().attr("role").unwrap_or("").to_lowercase();
-            let data_testid = element.value().attr("data-testid").unwrap_or("").to_lowercase();
+            let data_testid = element
+                .value()
+                .attr("data-testid")
+                .unwrap_or("")
+                .to_lowercase();
             let data_cy = element.value().attr("data-cy").unwrap_or("").to_lowercase();
             let title_attr = element.value().attr("title").unwrap_or("").to_lowercase();
             let text = element.text().collect::<String>().trim().to_lowercase();
@@ -60,7 +74,9 @@ impl StagehandEngine {
                 aria_role.clone()
             } else {
                 match tag {
-                    "input" if type_attr == "submit" || type_attr == "button" => "button".to_string(),
+                    "input" if type_attr == "submit" || type_attr == "button" => {
+                        "button".to_string()
+                    }
                     "input" if type_attr == "checkbox" => "checkbox".to_string(),
                     "input" if type_attr == "radio" => "radio".to_string(),
                     "input" => "textbox".to_string(),
@@ -77,15 +93,33 @@ impl StagehandEngine {
             // Medium weight: id, name, data-testid
             // Lower weight: text content, class
             for term in &search_terms {
-                if aria_label.contains(term) { score += 14.0; }
-                if placeholder.contains(term) { score += 13.0; }
-                if id.contains(term) { score += 11.0; }
-                if name.contains(term) { score += 10.0; }
-                if data_testid.contains(term) { score += 10.0; }
-                if data_cy.contains(term) { score += 10.0; }
-                if title_attr.contains(term) { score += 9.0; }
-                if text.contains(term) { score += 8.0; }
-                if class.contains(term) { score += 3.0; }
+                if aria_label.contains(term) {
+                    score += 14.0;
+                }
+                if placeholder.contains(term) {
+                    score += 13.0;
+                }
+                if id.contains(term) {
+                    score += 11.0;
+                }
+                if name.contains(term) {
+                    score += 10.0;
+                }
+                if data_testid.contains(term) {
+                    score += 10.0;
+                }
+                if data_cy.contains(term) {
+                    score += 10.0;
+                }
+                if title_attr.contains(term) {
+                    score += 9.0;
+                }
+                if text.contains(term) {
+                    score += 8.0;
+                }
+                if class.contains(term) {
+                    score += 3.0;
+                }
             }
 
             // Check label[for] association
@@ -100,30 +134,84 @@ impl StagehandEngine {
             }
 
             // Role matching bonus
-            if instruction_lower.contains("button") && role == "button" { score += 8.0; }
-            if instruction_lower.contains("link") && role == "link" { score += 8.0; }
-            if instruction_lower.contains("input") && role == "textbox" { score += 8.0; }
-            if instruction_lower.contains("checkbox") && role == "checkbox" { score += 8.0; }
-            if instruction_lower.contains("search") && (type_attr == "search" || id.contains("search") || placeholder.contains("search")) { score += 12.0; }
-            if instruction_lower.contains("submit") && (type_attr == "submit" || text.contains("submit")) { score += 12.0; }
-            if instruction_lower.contains("login") && (id.contains("login") || class.contains("login") || text.contains("login") || text.contains("sign in")) { score += 12.0; }
-            if instruction_lower.contains("email") && (type_attr == "email" || id.contains("email") || name.contains("email") || placeholder.contains("email")) { score += 12.0; }
-            if instruction_lower.contains("password") && (type_attr == "password" || id.contains("password") || name.contains("password")) { score += 12.0; }
+            if instruction_lower.contains("button") && role == "button" {
+                score += 8.0;
+            }
+            if instruction_lower.contains("link") && role == "link" {
+                score += 8.0;
+            }
+            if instruction_lower.contains("input") && role == "textbox" {
+                score += 8.0;
+            }
+            if instruction_lower.contains("checkbox") && role == "checkbox" {
+                score += 8.0;
+            }
+            if instruction_lower.contains("search")
+                && (type_attr == "search"
+                    || id.contains("search")
+                    || placeholder.contains("search"))
+            {
+                score += 12.0;
+            }
+            if instruction_lower.contains("submit")
+                && (type_attr == "submit" || text.contains("submit"))
+            {
+                score += 12.0;
+            }
+            if instruction_lower.contains("login")
+                && (id.contains("login")
+                    || class.contains("login")
+                    || text.contains("login")
+                    || text.contains("sign in"))
+            {
+                score += 12.0;
+            }
+            if instruction_lower.contains("email")
+                && (type_attr == "email"
+                    || id.contains("email")
+                    || name.contains("email")
+                    || placeholder.contains("email"))
+            {
+                score += 12.0;
+            }
+            if instruction_lower.contains("password")
+                && (type_attr == "password" || id.contains("password") || name.contains("password"))
+            {
+                score += 12.0;
+            }
 
             if score > 0.0 {
                 // Generate best CSS selector for this element
                 let selector = if !id.is_empty() {
                     format!("#{}", id)
                 } else if !data_testid.is_empty() {
-                    format!("[data-testid='{}']", element.value().attr("data-testid").unwrap_or(""))
+                    format!(
+                        "[data-testid='{}']",
+                        element.value().attr("data-testid").unwrap_or("")
+                    )
                 } else if !data_cy.is_empty() {
-                    format!("[data-cy='{}']", element.value().attr("data-cy").unwrap_or(""))
+                    format!(
+                        "[data-cy='{}']",
+                        element.value().attr("data-cy").unwrap_or("")
+                    )
                 } else if !name.is_empty() {
-                    format!("{}[name='{}']", tag, element.value().attr("name").unwrap_or(""))
+                    format!(
+                        "{}[name='{}']",
+                        tag,
+                        element.value().attr("name").unwrap_or("")
+                    )
                 } else if !placeholder.is_empty() {
-                    format!("{}[placeholder='{}']", tag, element.value().attr("placeholder").unwrap_or(""))
+                    format!(
+                        "{}[placeholder='{}']",
+                        tag,
+                        element.value().attr("placeholder").unwrap_or("")
+                    )
                 } else if !aria_label.is_empty() {
-                    format!("{}[aria-label='{}']", tag, element.value().attr("aria-label").unwrap_or(""))
+                    format!(
+                        "{}[aria-label='{}']",
+                        tag,
+                        element.value().attr("aria-label").unwrap_or("")
+                    )
                 } else {
                     // Fallback: tag + first class if available
                     if !class.is_empty() {
@@ -134,8 +222,10 @@ impl StagehandEngine {
                     }
                 };
 
-                let desc = format!("<{}> role={} id={} text='{}'",
-                    tag, role,
+                let desc = format!(
+                    "<{}> role={} id={} text='{}'",
+                    tag,
+                    role,
                     if id.is_empty() { "(none)" } else { &id },
                     if text.len() > 40 { &text[..40] } else { &text }
                 );
@@ -149,14 +239,17 @@ impl StagehandEngine {
         candidates.truncate(3);
 
         let max_score = candidates.first().map(|c| c.0).unwrap_or(0.0);
-        let result_elements: Vec<Value> = candidates.iter().map(|(score, sel, role, desc)| {
-            json!({
-                "selector": sel,
-                "role": role,
-                "description": desc,
-                "confidence": (0.5 + (score / (max_score * 2.0)).min(0.49))
+        let result_elements: Vec<Value> = candidates
+            .iter()
+            .map(|(score, sel, role, desc)| {
+                json!({
+                    "selector": sel,
+                    "role": role,
+                    "description": desc,
+                    "confidence": (0.5 + (score / (max_score * 2.0)).min(0.49))
+                })
             })
-        }).collect();
+            .collect();
 
         if result_elements.is_empty() {
             json!({

@@ -1,18 +1,26 @@
 use super::{Tool, ToolRegistry};
-use serde_json::{json, Value};
 use anyhow::Result;
+use serde_json::{json, Value};
 
 // ==================== NAVIGATION TOOLS ====================
 // These structs define tool schemas (name, description, inputSchema) for MCP registration.
 // Actual execution is handled by functions in this file.
 
 pub struct BrowserNavigateTool;
-impl BrowserNavigateTool { pub fn new() -> Self { Self } }
+impl BrowserNavigateTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserNavigateTool {
-    fn name(&self) -> &str { "browser_navigate" }
-    fn description(&self) -> &str { "Navigate to a URL using the real headless Chromium browser engine." }
+    fn name(&self) -> &str {
+        "browser_navigate"
+    }
+    fn description(&self) -> &str {
+        "Navigate to a URL using the real headless Chromium browser engine."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -31,12 +39,20 @@ impl Tool for BrowserNavigateTool {
 }
 
 pub struct BrowserClickTool;
-impl BrowserClickTool { pub fn new() -> Self { Self } }
+impl BrowserClickTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserClickTool {
-    fn name(&self) -> &str { "browser_click" }
-    fn description(&self) -> &str { "Click on an element using a CSS selector." }
+    fn name(&self) -> &str {
+        "browser_click"
+    }
+    fn description(&self) -> &str {
+        "Click on an element using a CSS selector."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -52,12 +68,20 @@ impl Tool for BrowserClickTool {
 }
 
 pub struct BrowserEvaluateTool;
-impl BrowserEvaluateTool { pub fn new() -> Self { Self } }
+impl BrowserEvaluateTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserEvaluateTool {
-    fn name(&self) -> &str { "browser_evaluate" }
-    fn description(&self) -> &str { "Execute JavaScript in the current page via Chrome DevTools Protocol." }
+    fn name(&self) -> &str {
+        "browser_evaluate"
+    }
+    fn description(&self) -> &str {
+        "Execute JavaScript in the current page via Chrome DevTools Protocol."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -73,12 +97,20 @@ impl Tool for BrowserEvaluateTool {
 }
 
 pub struct BrowserFillFormTool;
-impl BrowserFillFormTool { pub fn new() -> Self { Self } }
+impl BrowserFillFormTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserFillFormTool {
-    fn name(&self) -> &str { "browser_fill_form" }
-    fn description(&self) -> &str { "Fill multiple form fields. Keys are CSS selectors, values are text to type." }
+    fn name(&self) -> &str {
+        "browser_fill_form"
+    }
+    fn description(&self) -> &str {
+        "Fill multiple form fields. Keys are CSS selectors, values are text to type."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -94,12 +126,20 @@ impl Tool for BrowserFillFormTool {
 }
 
 pub struct BrowserBackTool;
-impl BrowserBackTool { pub fn new() -> Self { Self } }
+impl BrowserBackTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserBackTool {
-    fn name(&self) -> &str { "browser_back" }
-    fn description(&self) -> &str { "Navigate back in browser history." }
+    fn name(&self) -> &str {
+        "browser_back"
+    }
+    fn description(&self) -> &str {
+        "Navigate back in browser history."
+    }
     fn input_schema(&self) -> Value {
         json!({ "type": "object", "properties": {} })
     }
@@ -109,12 +149,20 @@ impl Tool for BrowserBackTool {
 }
 
 pub struct BrowserReloadTool;
-impl BrowserReloadTool { pub fn new() -> Self { Self } }
+impl BrowserReloadTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserReloadTool {
-    fn name(&self) -> &str { "browser_reload" }
-    fn description(&self) -> &str { "Reload the current page." }
+    fn name(&self) -> &str {
+        "browser_reload"
+    }
+    fn description(&self) -> &str {
+        "Reload the current page."
+    }
     fn input_schema(&self) -> Value {
         json!({ "type": "object", "properties": {} })
     }
@@ -124,12 +172,20 @@ impl Tool for BrowserReloadTool {
 }
 
 pub struct BrowserWaitForTool;
-impl BrowserWaitForTool { pub fn new() -> Self { Self } }
+impl BrowserWaitForTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserWaitForTool {
-    fn name(&self) -> &str { "browser_wait_for" }
-    fn description(&self) -> &str { "Wait for an element, text, or a timeout condition on the live page." }
+    fn name(&self) -> &str {
+        "browser_wait_for"
+    }
+    fn description(&self) -> &str {
+        "Wait for an element, text, or a timeout condition on the live page."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -146,12 +202,20 @@ impl Tool for BrowserWaitForTool {
 }
 
 pub struct BrowserTabNewTool;
-impl BrowserTabNewTool { pub fn new() -> Self { Self } }
+impl BrowserTabNewTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserTabNewTool {
-    fn name(&self) -> &str { "browser_tab_new" }
-    fn description(&self) -> &str { "Open a new browser tab, optionally navigating to a URL." }
+    fn name(&self) -> &str {
+        "browser_tab_new"
+    }
+    fn description(&self) -> &str {
+        "Open a new browser tab, optionally navigating to a URL."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -166,12 +230,20 @@ impl Tool for BrowserTabNewTool {
 }
 
 pub struct BrowserTabSwitchTool;
-impl BrowserTabSwitchTool { pub fn new() -> Self { Self } }
+impl BrowserTabSwitchTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserTabSwitchTool {
-    fn name(&self) -> &str { "browser_tab_switch" }
-    fn description(&self) -> &str { "Switch to a different tab by its ID." }
+    fn name(&self) -> &str {
+        "browser_tab_switch"
+    }
+    fn description(&self) -> &str {
+        "Switch to a different tab by its ID."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -187,12 +259,20 @@ impl Tool for BrowserTabSwitchTool {
 }
 
 pub struct BrowserTabCloseTool;
-impl BrowserTabCloseTool { pub fn new() -> Self { Self } }
+impl BrowserTabCloseTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserTabCloseTool {
-    fn name(&self) -> &str { "browser_tab_close" }
-    fn description(&self) -> &str { "Close the current browser tab." }
+    fn name(&self) -> &str {
+        "browser_tab_close"
+    }
+    fn description(&self) -> &str {
+        "Close the current browser tab."
+    }
     fn input_schema(&self) -> Value {
         json!({ "type": "object", "properties": {} })
     }
@@ -217,8 +297,7 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
     let profile_id = arguments.get("profile_id").and_then(|v| v.as_str());
 
     // Security Hardening: Validate URL scheme to prevent SSRF or local file traversal
-    let parsed_url = url::Url::parse(url)
-        .map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
+    let parsed_url = url::Url::parse(url).map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
     if parsed_url.scheme() == "file" && std::env::var("NEXUS_ALLOW_LOCAL_FILES").is_err() {
         return Err(anyhow::anyhow!("Access to local file:// scheme is disabled by default for security. Set NEXUS_ALLOW_LOCAL_FILES=1 to enable."));
     }
@@ -227,13 +306,21 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
     let existing_html = registry.get_active_html().unwrap_or_default();
     let detection = registry.crawl4ai.detect_protection(url, &existing_html);
     let protection = detection["protection_level"].as_str().unwrap_or("none");
-    let mut stealth_level = if protection == "high" { "high" } else { "medium" };
+    let mut stealth_level = if protection == "high" {
+        "high"
+    } else {
+        "medium"
+    };
 
     // Create session with optional profile
     let session_id = if let Some(pid) = profile_id {
         registry.memory.push(format!("Loaded profile: {}", pid));
-        if registry.memory.len() > 100 { registry.memory.remove(0); }
-        registry.session_manager.create_session(Some(pid.to_string()))?
+        if registry.memory.len() > 100 {
+            registry.memory.remove(0);
+        }
+        registry
+            .session_manager
+            .create_session(Some(pid.to_string()))?
     } else {
         registry.session_manager.create_session(None)?
     };
@@ -245,14 +332,18 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
 
     while attempts < max_attempts {
         attempts += 1;
-        
-        let session = registry.session_manager.get_session_mut(&session_id)
+
+        let session = registry
+            .session_manager
+            .get_session_mut(&session_id)
             .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
         // Anti-Bot Correction: Eagerly create the tab *before* applying stealth
         // so that scripts can be injected properly before navigation
         if session.tab.is_none() {
-            let tab = browser.new_tab().map_err(|e| anyhow::anyhow!("Failed to open tab: {}", e))?;
+            let tab = browser
+                .new_tab()
+                .map_err(|e| anyhow::anyhow!("Failed to open tab: {}", e))?;
             session.tab = Some(tab);
         }
 
@@ -263,14 +354,17 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
                 let script_owned = script.to_string();
                 let tab_clone = tab.clone();
                 let _ = tokio::task::spawn_blocking(move || {
-                    let _ = tab_clone.call_method(headless_chrome::protocol::cdp::Page::AddScriptToEvaluateOnNewDocument {
-                        source: script_owned.clone(),
-                        world_name: None,
-                        include_command_line_api: None,
-                        run_immediately: None,
-                    });
+                    let _ = tab_clone.call_method(
+                        headless_chrome::protocol::cdp::Page::AddScriptToEvaluateOnNewDocument {
+                            source: script_owned.clone(),
+                            world_name: None,
+                            include_command_line_api: None,
+                            run_immediately: None,
+                        },
+                    );
                     let _ = tab_clone.evaluate(&script_owned, false);
-                }).await;
+                })
+                .await;
             }
         }
 
@@ -279,7 +373,9 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
                 // Check if response page has bot protection
                 let html = session.get_current_html().unwrap_or_default();
                 let post_detection = registry.crawl4ai.detect_protection(url, &html);
-                let post_protection = post_detection["protection_level"].as_str().unwrap_or("none");
+                let post_protection = post_detection["protection_level"]
+                    .as_str()
+                    .unwrap_or("none");
 
                 if post_protection == "high" && stealth_level != "high" {
                     tracing::warn!("Bot protection detected after navigation. Upgrading stealth and retrying...");
@@ -291,7 +387,11 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
             }
             Err(e) => {
                 if attempts >= max_attempts {
-                    return Err(anyhow::anyhow!("Navigation failed after {} attempts: {}", attempts, e));
+                    return Err(anyhow::anyhow!(
+                        "Navigation failed after {} attempts: {}",
+                        attempts,
+                        e
+                    ));
                 }
                 tracing::warn!("Navigation failed: {}. Retrying with high stealth...", e);
                 stealth_level = "high";
@@ -300,12 +400,18 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
     }
 
     let page = page_result.ok_or_else(|| anyhow::anyhow!("Navigation failed"))?;
-    let session = registry.session_manager.get_session(&session_id)
+    let session = registry
+        .session_manager
+        .get_session(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found after navigation"))?;
 
     registry.memory.push(format!("Navigated to: {}", url));
-    if registry.memory.len() > 100 { registry.memory.remove(0); }
-    registry.vector_memory.store(url, &format!("Visited page: {}", page.title));
+    if registry.memory.len() > 100 {
+        registry.memory.remove(0);
+    }
+    registry
+        .vector_memory
+        .store(url, &format!("Visited page: {}", page.title));
 
     let response = json!({
         "success": true,
@@ -333,18 +439,23 @@ pub async fn handle_evaluate(registry: &mut ToolRegistry, arguments: Value) -> R
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing script"))?;
 
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     let script_owned = script.to_string();
     let result_val = tokio::task::spawn_blocking(move || -> Result<serde_json::Value> {
-        let result_obj = tab.evaluate(&script_owned, false)
+        let result_obj = tab
+            .evaluate(&script_owned, false)
             .map_err(|e| anyhow::anyhow!("JS execution failed: {}", e))?;
         Ok(result_obj.value.unwrap_or(serde_json::Value::Null))
-    }).await??;
+    })
+    .await??;
 
     registry.memory.push(format!("Executed JS: {}", script));
-    if registry.memory.len() > 100 { registry.memory.remove(0); }
+    if registry.memory.len() > 100 {
+        registry.memory.remove(0);
+    }
 
     let response = json!({
         "success": true,
@@ -357,20 +468,26 @@ pub async fn handle_evaluate(registry: &mut ToolRegistry, arguments: Value) -> R
 }
 
 pub async fn handle_click(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let selector = arguments.get("selector").and_then(|v| v.as_str())
+    let selector = arguments
+        .get("selector")
+        .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing selector"))?;
 
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     let selector_owned = selector.to_string();
     tokio::task::spawn_blocking(move || -> Result<()> {
-        let element = tab.find_element(&selector_owned)
+        let element = tab
+            .find_element(&selector_owned)
             .map_err(|e| anyhow::anyhow!("Element '{}' not found: {}", selector_owned, e))?;
-        element.click()
+        element
+            .click()
             .map_err(|e| anyhow::anyhow!("Click failed on '{}': {}", selector_owned, e))?;
         Ok(())
-    }).await??;
+    })
+    .await??;
 
     let response = json!({
         "success": true,
@@ -381,10 +498,13 @@ pub async fn handle_click(registry: &mut ToolRegistry, arguments: Value) -> Resu
 }
 
 pub async fn handle_fill_form(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let form_data = arguments.get("form_data").and_then(|v| v.as_object())
+    let form_data = arguments
+        .get("form_data")
+        .and_then(|v| v.as_object())
         .ok_or_else(|| anyhow::anyhow!("Missing form_data"))?;
 
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     let fields: Vec<(String, String)> = form_data
@@ -395,15 +515,19 @@ pub async fn handle_fill_form(registry: &mut ToolRegistry, arguments: Value) -> 
     let filled_count = fields.len();
     tokio::task::spawn_blocking(move || -> Result<()> {
         for (selector, value) in fields {
-            let element = tab.find_element(&selector)
+            let element = tab
+                .find_element(&selector)
                 .map_err(|e| anyhow::anyhow!("Element '{}' not found: {}", selector, e))?;
-            element.click()
+            element
+                .click()
                 .map_err(|e| anyhow::anyhow!("Failed to focus '{}': {}", selector, e))?;
-            element.type_into(&value)
+            element
+                .type_into(&value)
                 .map_err(|e| anyhow::anyhow!("Failed to type into '{}': {}", selector, e))?;
         }
         Ok(())
-    }).await??;
+    })
+    .await??;
 
     let response = json!({
         "success": true,
@@ -414,22 +538,43 @@ pub async fn handle_fill_form(registry: &mut ToolRegistry, arguments: Value) -> 
 }
 
 pub async fn handle_wait_for(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let selector = arguments.get("selector").and_then(|v| v.as_str()).map(String::from);
-    let text = arguments.get("text").and_then(|v| v.as_str()).map(String::from);
-    let timeout_ms = arguments.get("timeout").and_then(|v| v.as_u64()).unwrap_or(30000);
+    let selector = arguments
+        .get("selector")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let text = arguments
+        .get("text")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let timeout_ms = arguments
+        .get("timeout")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(30000);
 
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
-    let condition = if selector.is_some() { "selector" } else if text.is_some() { "text" } else { "delay" };
+    let condition = if selector.is_some() {
+        "selector"
+    } else if text.is_some() {
+        "text"
+    } else {
+        "delay"
+    };
 
     if let Some(sel) = selector {
         let tab_clone = tab.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            tab_clone.wait_for_element_with_custom_timeout(&sel, std::time::Duration::from_millis(timeout_ms))
+            tab_clone
+                .wait_for_element_with_custom_timeout(
+                    &sel,
+                    std::time::Duration::from_millis(timeout_ms),
+                )
                 .map_err(|e| anyhow::anyhow!("Timeout waiting for element '{}': {}", sel, e))?;
             Ok(())
-        }).await??;
+        })
+        .await??;
     } else if let Some(txt) = text {
         let start = std::time::Instant::now();
         // Security: Escape user inputs to prevent injection into browser JS context
@@ -438,9 +583,8 @@ pub async fn handle_wait_for(registry: &mut ToolRegistry, arguments: Value) -> R
         loop {
             let tab_clone = tab.clone();
             let script_clone = script.clone();
-            let res = tokio::task::spawn_blocking(move || {
-                tab_clone.evaluate(&script_clone, false)
-            }).await??;
+            let res = tokio::task::spawn_blocking(move || tab_clone.evaluate(&script_clone, false))
+                .await??;
             if res.value.and_then(|v| v.as_bool()).unwrap_or(false) {
                 break;
             }
@@ -463,9 +607,12 @@ pub async fn handle_wait_for(registry: &mut ToolRegistry, arguments: Value) -> R
 }
 
 pub async fn handle_back(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let session_id = registry.get_active_session_id()
+    let session_id = registry
+        .get_active_session_id()
         .ok_or_else(|| anyhow::anyhow!("No active session"))?;
-    let session = registry.session_manager.get_session_mut(&session_id)
+    let session = registry
+        .session_manager
+        .get_session_mut(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
     let page = session.go_back().await?;
@@ -483,9 +630,12 @@ pub async fn handle_back(registry: &mut ToolRegistry, _arguments: Value) -> Resu
 }
 
 pub async fn handle_reload(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let session_id = registry.get_active_session_id()
+    let session_id = registry
+        .get_active_session_id()
         .ok_or_else(|| anyhow::anyhow!("No active session"))?;
-    let session = registry.session_manager.get_session_mut(&session_id)
+    let session = registry
+        .session_manager
+        .get_session_mut(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
     let page = session.reload().await?;
@@ -513,7 +663,9 @@ pub async fn handle_tab_new(registry: &mut ToolRegistry, arguments: Value) -> Re
         registry.session_manager.create_session(None)?
     };
 
-    let session = registry.session_manager.get_session_mut(&session_id)
+    let session = registry
+        .session_manager
+        .get_session_mut(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
     let page = session.new_tab(url, &browser).await?;
@@ -529,12 +681,17 @@ pub async fn handle_tab_new(registry: &mut ToolRegistry, arguments: Value) -> Re
 }
 
 pub async fn handle_tab_switch(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let tab_id = arguments.get("tab_id").and_then(|v| v.as_str())
+    let tab_id = arguments
+        .get("tab_id")
+        .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing tab_id"))?;
 
-    let session_id = registry.get_active_session_id()
+    let session_id = registry
+        .get_active_session_id()
         .ok_or_else(|| anyhow::anyhow!("No active session"))?;
-    let session = registry.session_manager.get_session_mut(&session_id)
+    let session = registry
+        .session_manager
+        .get_session_mut(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
     session.switch_tab(tab_id)?;
@@ -548,9 +705,12 @@ pub async fn handle_tab_switch(registry: &mut ToolRegistry, arguments: Value) ->
 }
 
 pub async fn handle_tab_close(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let session_id = registry.get_active_session_id()
+    let session_id = registry
+        .get_active_session_id()
         .ok_or_else(|| anyhow::anyhow!("No active session"))?;
-    let session = registry.session_manager.get_session_mut(&session_id)
+    let session = registry
+        .session_manager
+        .get_session_mut(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
     session.close_current_tab()?;

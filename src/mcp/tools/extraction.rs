@@ -1,17 +1,25 @@
 use super::{Tool, ToolRegistry};
-use serde_json::{json, Value};
 use anyhow::Result;
+use serde_json::{json, Value};
 
 // ==================== EXTRACTION TOOLS ====================
 // Schema-only definitions. Actual execution in functions below.
 
 pub struct BrowserMarkdownTool;
-impl BrowserMarkdownTool { pub fn new() -> Self { Self } }
+impl BrowserMarkdownTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserMarkdownTool {
-    fn name(&self) -> &str { "browser_markdown" }
-    fn description(&self) -> &str { "Extract clean Markdown from the current live page." }
+    fn name(&self) -> &str {
+        "browser_markdown"
+    }
+    fn description(&self) -> &str {
+        "Extract clean Markdown from the current live page."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -27,12 +35,20 @@ impl Tool for BrowserMarkdownTool {
 }
 
 pub struct BrowserExtractTool;
-impl BrowserExtractTool { pub fn new() -> Self { Self } }
+impl BrowserExtractTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserExtractTool {
-    fn name(&self) -> &str { "browser_extract" }
-    fn description(&self) -> &str { "Extract structured data from the current page using CSS selectors or a schema." }
+    fn name(&self) -> &str {
+        "browser_extract"
+    }
+    fn description(&self) -> &str {
+        "Extract structured data from the current page using CSS selectors or a schema."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -48,12 +64,20 @@ impl Tool for BrowserExtractTool {
 }
 
 pub struct BrowserLinksTool;
-impl BrowserLinksTool { pub fn new() -> Self { Self } }
+impl BrowserLinksTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserLinksTool {
-    fn name(&self) -> &str { "browser_links" }
-    fn description(&self) -> &str { "Extract all links from the current live page." }
+    fn name(&self) -> &str {
+        "browser_links"
+    }
+    fn description(&self) -> &str {
+        "Extract all links from the current live page."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -68,12 +92,20 @@ impl Tool for BrowserLinksTool {
 }
 
 pub struct BrowserPdfTool;
-impl BrowserPdfTool { pub fn new() -> Self { Self } }
+impl BrowserPdfTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserPdfTool {
-    fn name(&self) -> &str { "browser_pdf" }
-    fn description(&self) -> &str { "Generate a PDF of the current page from the live browser." }
+    fn name(&self) -> &str {
+        "browser_pdf"
+    }
+    fn description(&self) -> &str {
+        "Generate a PDF of the current page from the live browser."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -89,12 +121,20 @@ impl Tool for BrowserPdfTool {
 }
 
 pub struct BrowserScreenshotTool;
-impl BrowserScreenshotTool { pub fn new() -> Self { Self } }
+impl BrowserScreenshotTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserScreenshotTool {
-    fn name(&self) -> &str { "browser_screenshot" }
-    fn description(&self) -> &str { "Take a PNG screenshot of the current page from the live browser." }
+    fn name(&self) -> &str {
+        "browser_screenshot"
+    }
+    fn description(&self) -> &str {
+        "Take a PNG screenshot of the current page from the live browser."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -114,16 +154,28 @@ impl Tool for BrowserScreenshotTool {
 pub async fn handle_markdown(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
     let html = registry.get_active_html()?;
     let session_id = registry.get_active_session_id().unwrap_or_default();
-    let session = registry.session_manager.get_session(&session_id)
+    let session = registry
+        .session_manager
+        .get_session(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
-    let url = session.current_page_state().map(|p| p.url.clone()).unwrap_or_default();
-    let title = session.current_page_state().map(|p| p.title.clone()).unwrap_or_default();
+    let url = session
+        .current_page_state()
+        .map(|p| p.url.clone())
+        .unwrap_or_default();
+    let title = session
+        .current_page_state()
+        .map(|p| p.title.clone())
+        .unwrap_or_default();
 
     let markdown = registry.extractor.html_to_markdown(&html, &url)?;
     registry.vector_memory.store(&url, &markdown);
-    registry.memory.push("Extracted Markdown from live page".to_string());
-    if registry.memory.len() > 100 { registry.memory.remove(0); }
+    registry
+        .memory
+        .push("Extracted Markdown from live page".to_string());
+    if registry.memory.len() > 100 {
+        registry.memory.remove(0);
+    }
 
     let response = json!({
         "success": true,
@@ -140,20 +192,24 @@ pub async fn handle_markdown(registry: &mut ToolRegistry, _arguments: Value) -> 
 }
 
 pub async fn handle_screenshot(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     let tab_clone = tab.clone();
     let png_bytes = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
-        tab_clone.capture_screenshot(
-            headless_chrome::protocol::cdp::Page::CaptureScreenshotFormatOption::Png,
-            None,
-            None,
-            true
-        ).map_err(|e| anyhow::anyhow!("Failed to capture screenshot: {}", e))
-    }).await??;
+        tab_clone
+            .capture_screenshot(
+                headless_chrome::protocol::cdp::Page::CaptureScreenshotFormatOption::Png,
+                None,
+                None,
+                true,
+            )
+            .map_err(|e| anyhow::anyhow!("Failed to capture screenshot: {}", e))
+    })
+    .await??;
 
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
     let b64 = general_purpose::STANDARD.encode(&png_bytes);
 
     let response = json!({
@@ -167,16 +223,19 @@ pub async fn handle_screenshot(registry: &mut ToolRegistry, _arguments: Value) -
 }
 
 pub async fn handle_pdf(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     let tab_clone = tab.clone();
     let pdf_bytes = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
-        tab_clone.print_to_pdf(None)
+        tab_clone
+            .print_to_pdf(None)
             .map_err(|e| anyhow::anyhow!("Failed to print to PDF: {}", e))
-    }).await??;
+    })
+    .await??;
 
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
     let b64 = general_purpose::STANDARD.encode(&pdf_bytes);
 
     let response = json!({
@@ -224,12 +283,16 @@ pub async fn handle_extract(registry: &mut ToolRegistry, arguments: Value) -> Re
     } else {
         let document = scraper::Html::parse_document(&html);
         let title_sel = scraper::Selector::parse("title").unwrap();
-        let title = document.select(&title_sel).next()
+        let title = document
+            .select(&title_sel)
+            .next()
             .map(|e| e.text().collect::<String>())
             .unwrap_or_else(|| "No Title".to_string());
 
         let body_sel = scraper::Selector::parse("body").unwrap();
-        let body_text: String = document.select(&body_sel).next()
+        let body_text: String = document
+            .select(&body_sel)
+            .next()
             .map(|e| e.text().collect::<String>())
             .unwrap_or_default();
         let word_count = body_text.split_whitespace().count();

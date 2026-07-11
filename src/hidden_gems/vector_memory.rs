@@ -52,13 +52,10 @@ impl PersistentVectorMemory {
 
         if let Some(conn) = &self.conn {
             if let Ok(mut stmt) = conn.prepare(
-                "SELECT key, content FROM memory WHERE key LIKE ?1 OR content LIKE ?1 LIMIT 10"
+                "SELECT key, content FROM memory WHERE key LIKE ?1 OR content LIKE ?1 LIMIT 10",
             ) {
                 if let Ok(rows) = stmt.query_map([format!("%{}%", query)], |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, String>(1)?,
-                    ))
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
                 }) {
                     for row in rows.flatten() {
                         results.push(json!({

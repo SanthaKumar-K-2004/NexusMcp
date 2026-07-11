@@ -11,13 +11,21 @@ impl FirecrawlExtractor {
     pub fn extract_with_schema(&self, html: &str, schema: Value) -> Value {
         let document = scraper::Html::parse_document(html);
         let mut extracted = serde_json::Map::new();
-        
+
         let title_sel = scraper::Selector::parse("title").unwrap();
-        let title = document.select(&title_sel).next().map(|e| e.text().collect::<String>()).unwrap_or_default();
-        
+        let title = document
+            .select(&title_sel)
+            .next()
+            .map(|e| e.text().collect::<String>())
+            .unwrap_or_default();
+
         let body_sel = scraper::Selector::parse("body").unwrap();
-        let body_text = document.select(&body_sel).next().map(|e| e.text().collect::<String>()).unwrap_or_default();
-        
+        let body_text = document
+            .select(&body_sel)
+            .next()
+            .map(|e| e.text().collect::<String>())
+            .unwrap_or_default();
+
         if let Some(obj) = schema.as_object() {
             for (key, _val) in obj {
                 match key.as_str() {
@@ -25,8 +33,11 @@ impl FirecrawlExtractor {
                         extracted.insert("title".to_string(), json!(title));
                     }
                     "emails" => {
-                        if let Ok(re) = regex::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}") {
-                            let emails: std::collections::HashSet<String> = re.find_iter(&body_text)
+                        if let Ok(re) =
+                            regex::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+                        {
+                            let emails: std::collections::HashSet<String> = re
+                                .find_iter(&body_text)
                                 .map(|m| m.as_str().to_string())
                                 .collect();
                             let emails_vec: Vec<String> = emails.into_iter().collect();
@@ -35,7 +46,8 @@ impl FirecrawlExtractor {
                     }
                     "prices" => {
                         if let Ok(re) = regex::Regex::new(r"[$€£¥]\s?\d+(?:[.,]\d{2})?") {
-                            let prices: std::collections::HashSet<String> = re.find_iter(&body_text)
+                            let prices: std::collections::HashSet<String> = re
+                                .find_iter(&body_text)
                                 .map(|m| m.as_str().to_string())
                                 .collect();
                             let prices_vec: Vec<String> = prices.into_iter().collect();
@@ -49,7 +61,8 @@ impl FirecrawlExtractor {
                     }
                     _ => {
                         if let Ok(sel) = scraper::Selector::parse(key) {
-                            let matches: Vec<String> = document.select(&sel)
+                            let matches: Vec<String> = document
+                                .select(&sel)
                                 .map(|e| e.text().collect::<String>().trim().to_string())
                                 .filter(|s| !s.is_empty())
                                 .collect();
@@ -61,7 +74,7 @@ impl FirecrawlExtractor {
                 }
             }
         }
-        
+
         json!({
             "extracted_data": Value::Object(extracted),
             "schema_used": schema,

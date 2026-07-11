@@ -1,14 +1,22 @@
 use super::{Tool, ToolRegistry};
-use serde_json::{json, Value};
 use anyhow::Result;
+use serde_json::{json, Value};
 
 pub struct BrowserStealthRotateTool;
-impl BrowserStealthRotateTool { pub fn new() -> Self { Self } }
+impl BrowserStealthRotateTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserStealthRotateTool {
-    fn name(&self) -> &str { "browser_stealth_rotate" }
-    fn description(&self) -> &str { "Rotate browser fingerprint (user-agent, WebGL, plugins) on the active tab using CDP." }
+    fn name(&self) -> &str {
+        "browser_stealth_rotate"
+    }
+    fn description(&self) -> &str {
+        "Rotate browser fingerprint (user-agent, WebGL, plugins) on the active tab using CDP."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -27,28 +35,41 @@ impl Tool for BrowserStealthRotateTool {
     }
 }
 
-pub async fn handle_stealth_rotate(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let level = arguments.get("level").and_then(|v| v.as_str()).unwrap_or("high");
+pub async fn handle_stealth_rotate(
+    registry: &mut ToolRegistry,
+    arguments: Value,
+) -> Result<String> {
+    let level = arguments
+        .get("level")
+        .and_then(|v| v.as_str())
+        .unwrap_or("high");
 
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     let stealth_config = registry.stealth_engine.apply_stealth(level);
     let script = stealth_config["script"].as_str().unwrap_or("").to_string();
-    let user_agent = stealth_config["user_agent"].as_str().unwrap_or("").to_string();
+    let user_agent = stealth_config["user_agent"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     let tab_clone = tab.clone();
     let script_clone = script.clone();
     tokio::task::spawn_blocking(move || -> Result<()> {
-        tab_clone.call_method(headless_chrome::protocol::cdp::Page::AddScriptToEvaluateOnNewDocument {
-            source: script_clone.clone(),
-            world_name: None,
-            include_command_line_api: None,
-            run_immediately: None,
-        })?;
+        tab_clone.call_method(
+            headless_chrome::protocol::cdp::Page::AddScriptToEvaluateOnNewDocument {
+                source: script_clone.clone(),
+                world_name: None,
+                include_command_line_api: None,
+                run_immediately: None,
+            },
+        )?;
         tab_clone.evaluate(&script_clone, false)?;
         Ok(())
-    }).await??;
+    })
+    .await??;
 
     let response = json!({
         "success": true,

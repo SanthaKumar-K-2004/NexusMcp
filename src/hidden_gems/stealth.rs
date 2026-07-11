@@ -32,7 +32,10 @@ impl PlaywrightStealth {
 
     /// Get the next user agent from the rotation pool.
     pub fn next_user_agent(&self) -> (&'static str, &'static str, &'static str) {
-        let idx = self.ua_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % USER_AGENTS.len();
+        let idx = self
+            .ua_index
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            % USER_AGENTS.len();
         USER_AGENTS[idx]
     }
 
@@ -64,19 +67,21 @@ Object.defineProperty(navigator, 'vendor', {{ get: () => '{}' }});"#,
 
             // 3. Override navigator.languages
             scripts.push(
-                "Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });".to_string()
+                "Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });"
+                    .to_string(),
             );
             techniques.push("languages");
 
             // 4. Override navigator.hardwareConcurrency
             scripts.push(
-                "Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });".to_string()
+                "Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });"
+                    .to_string(),
             );
             techniques.push("hardware_concurrency");
 
             // 5. Override navigator.deviceMemory
             scripts.push(
-                "Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });".to_string()
+                "Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });".to_string(),
             );
             techniques.push("device_memory");
         }
@@ -106,7 +111,8 @@ WebGLRenderingContext.prototype.getParameter = function(parameter) {
     if (parameter === 37445) return 'Intel Inc.';
     if (parameter === 37446) return 'Intel Iris OpenGL Engine';
     return getParameter.call(this, parameter);
-};"#.to_string()
+};"#
+                .to_string(),
             );
             techniques.push("webgl_vendor");
 
@@ -130,7 +136,8 @@ WebGLRenderingContext.prototype.getParameter = function(parameter) {
             scripts.push(
                 r#"Object.defineProperty(navigator, 'connection', {
     get: () => ({ effectiveType: '4g', rtt: 50, downlink: 10, saveData: false })
-});"#.to_string()
+});"#
+                    .to_string(),
             );
             techniques.push("connection_info");
         }

@@ -88,19 +88,18 @@ impl TrafilaturaExtractor {
     /// Extract clean text from an element, skipping boilerplate child elements.
     fn extract_clean_text_from_element(&self, element: &scraper::ElementRef) -> String {
         // Tags to skip entirely — these are boilerplate
-        let skip_tags = ["script", "style", "nav", "footer", "header", "aside",
-                         "noscript", "iframe", "svg", "form"];
+        let skip_tags = [
+            "script", "style", "nav", "footer", "header", "aside", "noscript", "iframe", "svg",
+            "form",
+        ];
 
         let mut lines: Vec<String> = Vec::new();
         self.collect_text_recursive(element, &skip_tags, &mut lines);
 
         // Clean up: collapse whitespace, remove empty lines, trim
-        lines.iter()
-            .map(|line| {
-                line.split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            })
+        lines
+            .iter()
+            .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
             .filter(|line| !line.is_empty())
             .collect::<Vec<_>>()
             .join("\n")
@@ -126,10 +125,23 @@ impl TrafilaturaExtractor {
                         continue; // Skip boilerplate
                     }
                     // Block-level elements get a line break
-                    let is_block = matches!(el.name(),
-                        "p" | "div" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
-                        | "li" | "blockquote" | "pre" | "section" | "article"
-                        | "tr" | "br" | "hr"
+                    let is_block = matches!(
+                        el.name(),
+                        "p" | "div"
+                            | "h1"
+                            | "h2"
+                            | "h3"
+                            | "h4"
+                            | "h5"
+                            | "h6"
+                            | "li"
+                            | "blockquote"
+                            | "pre"
+                            | "section"
+                            | "article"
+                            | "tr"
+                            | "br"
+                            | "hr"
                     );
                     if is_block && !out.is_empty() {
                         out.push(String::new()); // line break

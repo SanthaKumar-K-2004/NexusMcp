@@ -1,23 +1,26 @@
-use serde_json::{json, Value};
-use std::collections::HashMap;
-use anyhow::Result;
-use std::sync::Arc;
+use crate::agent::AgentEnhancer;
 use crate::engine::SessionManager;
 use crate::extraction::AdvancedExtractor;
-use crate::agent::AgentEnhancer;
+use crate::hidden_gems::{
+    Crawl4AIDetector, FirecrawlExtractor, PlaywrightStealth, StagehandEngine, TrafilaturaExtractor,
+    VectorMemory,
+};
 use crate::session::ProfileManager;
-use crate::hidden_gems::{StagehandEngine, Crawl4AIDetector, TrafilaturaExtractor, PlaywrightStealth, VectorMemory, FirecrawlExtractor};
+use anyhow::Result;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-pub mod navigation;
+pub mod agent_superpowers;
+pub mod enterprise;
+pub mod error_recovery;
 pub mod extraction;
-pub mod stealth;
+pub mod hidden_gem_tools;
+pub mod navigation;
+pub mod profile_persistence;
 pub mod research;
 pub mod session;
-pub mod error_recovery;
-pub mod profile_persistence;
-pub mod agent_superpowers;
-pub mod hidden_gem_tools;
-pub mod enterprise;
+pub mod stealth;
 
 pub struct ToolRegistry {
     tools: HashMap<String, Box<dyn Tool + Send + Sync>>,
@@ -47,8 +50,10 @@ pub trait Tool {
 
 impl ToolRegistry {
     pub fn new() -> Self {
-        let db_path = std::env::var("NEXUS_DB_PATH").unwrap_or_else(|_| "nexusmcp_profiles.db".to_string());
-        let profile_manager = ProfileManager::new(&db_path).expect("Failed to initialize ProfileManager");
+        let db_path =
+            std::env::var("NEXUS_DB_PATH").unwrap_or_else(|_| "nexusmcp_profiles.db".to_string());
+        let profile_manager =
+            ProfileManager::new(&db_path).expect("Failed to initialize ProfileManager");
         Self {
             tools: HashMap::new(),
             session_manager: SessionManager::new(),
@@ -113,13 +118,18 @@ impl ToolRegistry {
         // Hidden Gems Tools
         self.register(Box::new(hidden_gem_tools::BrowserFindElementTool::new()));
         self.register(Box::new(hidden_gem_tools::BrowserTrafilaturaTool::new()));
-        self.register(Box::new(hidden_gem_tools::BrowserFirecrawlExtractTool::new()));
+        self.register(Box::new(
+            hidden_gem_tools::BrowserFirecrawlExtractTool::new(),
+        ));
 
         // Enterprise Tools
         self.register(Box::new(enterprise::BrowserHandleCaptchaTool::new()));
         self.register(Box::new(enterprise::BrowserHealthCheckTool::new()));
 
-        tracing::info!("Registered {} tools (all modularized and real)", self.tools.len());
+        tracing::info!(
+            "Registered {} tools (all modularized and real)",
+            self.tools.len()
+        );
     }
 
     fn register(&mut self, tool: Box<dyn Tool + Send + Sync>) {
@@ -143,7 +153,9 @@ impl ToolRegistry {
     // ==================== HELPERS ====================
 
     pub fn get_active_tab(&self) -> Option<Arc<headless_chrome::Tab>> {
-        self.session_manager.sessions.values()
+        self.session_manager
+            .sessions
+            .values()
             .find_map(|session| session.tab.clone())
     }
 
@@ -152,11 +164,15 @@ impl ToolRegistry {
     }
 
     pub fn get_active_html(&self) -> Result<String> {
-        let session_id = self.get_active_session_id()
+        let session_id = self
+            .get_active_session_id()
             .ok_or_else(|| anyhow::anyhow!("No active session"))?;
-        let session = self.session_manager.get_session(&session_id)
+        let session = self
+            .session_manager
+            .get_session(&session_id)
             .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
-        session.get_current_html()
+        session
+            .get_current_html()
             .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))
     }
 
@@ -183,7 +199,9 @@ impl ToolRegistry {
             "browser_screenshot" => extraction::handle_screenshot(self, arguments).await,
             "browser_pdf" => extraction::handle_pdf(self, arguments).await,
             "browser_links" => extraction::handle_links(self, arguments).await,
-            "browser_extract" | "browser_firecrawl_extract" => extraction::handle_extract(self, arguments).await,
+            "browser_extract" | "browser_firecrawl_extract" => {
+                extraction::handle_extract(self, arguments).await
+            }
 
             // Hidden gems
             "browser_find_element" => hidden_gem_tools::handle_find_element(self, arguments).await,
@@ -194,7 +212,9 @@ impl ToolRegistry {
 
             // Profiles
             "browser_create_profile" => session::handle_create_profile(self, arguments).await,
-            "browser_load_profile" => profile_persistence::handle_load_profile(self, arguments).await,
+            "browser_load_profile" => {
+                profile_persistence::handle_load_profile(self, arguments).await
+            }
 
             // Agent superpowers
             "browser_observe" => agent_superpowers::handle_observe(self, arguments).await,

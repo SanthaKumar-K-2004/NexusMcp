@@ -17,7 +17,7 @@ pub struct ProfileManager {
 impl ProfileManager {
     pub fn new(db_path: &str) -> SqlResult<Self> {
         let conn = Connection::open(db_path)?;
-        
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS profiles (
                 id TEXT PRIMARY KEY,
@@ -32,7 +32,12 @@ impl ProfileManager {
         Ok(Self { conn })
     }
 
-    pub fn create_profile(&self, name: &str, proxy: Option<&str>, stealth_level: &str) -> SqlResult<Profile> {
+    pub fn create_profile(
+        &self,
+        name: &str,
+        proxy: Option<&str>,
+        stealth_level: &str,
+    ) -> SqlResult<Profile> {
         let id = uuid::Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
 
@@ -52,7 +57,7 @@ impl ProfileManager {
 
     pub fn get_profile(&self, id: &str) -> SqlResult<Option<Profile>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, proxy, stealth_level, created_at FROM profiles WHERE id = ?1"
+            "SELECT id, name, proxy, stealth_level, created_at FROM profiles WHERE id = ?1",
         )?;
 
         let profile = stmt.query_row([id], |row| {

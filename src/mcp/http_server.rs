@@ -10,7 +10,6 @@ use tower_http::cors::CorsLayer;
 
 use crate::mcp::tools::ToolRegistry;
 
-
 pub struct AppState {
     registry: Arc<Mutex<ToolRegistry>>,
 }
@@ -25,9 +24,9 @@ pub async fn start_http_server(port: u16, _stealth: bool) -> anyhow::Result<()> 
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
             let host = origin.to_str().unwrap_or("");
-            host.starts_with("http://localhost:") 
-                || host.starts_with("http://127.0.0.1:") 
-                || host.starts_with("https://localhost:") 
+            host.starts_with("http://localhost:")
+                || host.starts_with("http://127.0.0.1:")
+                || host.starts_with("https://localhost:")
                 || host.starts_with("https://127.0.0.1:")
         }))
         .allow_methods(tower_http::cors::Any)
@@ -35,7 +34,7 @@ pub async fn start_http_server(port: u16, _stealth: bool) -> anyhow::Result<()> 
 
     let app = Router::new()
         .route("/health", get(health_check))
-        .route("/metrics", get(metrics_handler))           // Prometheus metrics
+        .route("/metrics", get(metrics_handler)) // Prometheus metrics
         .route("/mcp/tools", get(list_tools))
         .route("/mcp/call", post(call_tool))
         .layer(cors)
@@ -61,16 +60,17 @@ async fn health_check() -> Json<Value> {
 // Prometheus metrics endpoint
 async fn metrics_handler() -> String {
     use prometheus::Encoder;
-    
+
     let encoder = prometheus::TextEncoder::new();
     let metric_families = prometheus::gather();
-    
+
     let mut buffer = Vec::new();
     if let Err(e) = encoder.encode(&metric_families, &mut buffer) {
         return format!("# Error encoding metrics: {}\n", e);
     }
-    
-    String::from_utf8(buffer).unwrap_or_else(|_| "# Error converting metrics to string\n".to_string())
+
+    String::from_utf8(buffer)
+        .unwrap_or_else(|_| "# Error converting metrics to string\n".to_string())
 }
 
 async fn list_tools(State(state): State<Arc<AppState>>) -> Json<Value> {
@@ -79,10 +79,7 @@ async fn list_tools(State(state): State<Arc<AppState>>) -> Json<Value> {
     Json(json!({ "tools": tools }))
 }
 
-async fn call_tool(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<Value>,
-) -> Json<Value> {
+async fn call_tool(State(state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
     let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("");
     let arguments = payload.get("arguments").cloned().unwrap_or(json!({}));
 

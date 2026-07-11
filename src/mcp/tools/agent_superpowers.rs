@@ -1,14 +1,22 @@
 use super::{Tool, ToolRegistry};
-use serde_json::{json, Value};
 use anyhow::Result;
+use serde_json::{json, Value};
 
 pub struct BrowserObserveTool;
-impl BrowserObserveTool { pub fn new() -> Self { Self } }
+impl BrowserObserveTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserObserveTool {
-    fn name(&self) -> &str { "browser_observe" }
-    fn description(&self) -> &str { "Observe the current page: inventory all interactive elements (forms, inputs, buttons, links)." }
+    fn name(&self) -> &str {
+        "browser_observe"
+    }
+    fn description(&self) -> &str {
+        "Observe the current page: inventory all interactive elements (forms, inputs, buttons, links)."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -23,12 +31,20 @@ impl Tool for BrowserObserveTool {
 }
 
 pub struct BrowserActTool;
-impl BrowserActTool { pub fn new() -> Self { Self } }
+impl BrowserActTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserActTool {
-    fn name(&self) -> &str { "browser_act" }
-    fn description(&self) -> &str { "Act on the page: find an element matching your goal and click/type on it." }
+    fn name(&self) -> &str {
+        "browser_act"
+    }
+    fn description(&self) -> &str {
+        "Act on the page: find an element matching your goal and click/type on it."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -47,7 +63,9 @@ impl Tool for BrowserActTool {
 // ==================== HANDLER IMPLEMENTATIONS ====================
 
 pub async fn handle_observe(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let instruction = arguments.get("instruction").and_then(|v| v.as_str())
+    let instruction = arguments
+        .get("instruction")
+        .and_then(|v| v.as_str())
         .unwrap_or("analyze page");
 
     let html = registry.get_active_html()?;
@@ -102,7 +120,8 @@ pub async fn handle_observe(registry: &mut ToolRegistry, arguments: Value) -> Re
             "a" => {
                 links_count += 1;
                 let href = element.value().attr("href").unwrap_or("");
-                if links_count <= 20 { // Cap link observations
+                if links_count <= 20 {
+                    // Cap link observations
                     observations.push(json!({
                         "type": "link",
                         "text": if text.len() > 50 { &text[..50] } else { &text },
@@ -141,18 +160,24 @@ pub async fn handle_observe(registry: &mut ToolRegistry, arguments: Value) -> Re
 }
 
 pub async fn handle_act(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let goal = arguments.get("goal").and_then(|v| v.as_str())
+    let goal = arguments
+        .get("goal")
+        .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing goal"))?;
 
     let html = registry.get_active_html()?;
-    let tab = registry.get_active_tab()
+    let tab = registry
+        .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
 
     // Use stagehand to find the target element for the goal
     let stagehand_result = registry.stagehand.find_element(goal, &html);
-    let target_selector = stagehand_result["element"]["selector"].as_str()
+    let target_selector = stagehand_result["element"]["selector"]
+        .as_str()
         .unwrap_or("body");
-    let confidence = stagehand_result["element"]["confidence"].as_f64().unwrap_or(0.0);
+    let confidence = stagehand_result["element"]["confidence"]
+        .as_f64()
+        .unwrap_or(0.0);
 
     if confidence < 0.3 {
         let response = json!({
@@ -165,7 +190,9 @@ pub async fn handle_act(registry: &mut ToolRegistry, arguments: Value) -> Result
         return Ok(serde_json::to_string_pretty(&response)?);
     }
 
-    let role = stagehand_result["element"]["role"].as_str().unwrap_or("generic");
+    let role = stagehand_result["element"]["role"]
+        .as_str()
+        .unwrap_or("generic");
     let action_taken;
 
     match role {
@@ -173,12 +200,15 @@ pub async fn handle_act(registry: &mut ToolRegistry, arguments: Value) -> Result
             let tab_clone = tab.clone();
             let sel = target_selector.to_string();
             tokio::task::spawn_blocking(move || -> Result<()> {
-                let element = tab_clone.find_element(&sel)
+                let element = tab_clone
+                    .find_element(&sel)
                     .map_err(|e| anyhow::anyhow!("Element not found: {}", e))?;
-                element.click()
+                element
+                    .click()
                     .map_err(|e| anyhow::anyhow!("Click failed: {}", e))?;
                 Ok(())
-            }).await??;
+            })
+            .await??;
             action_taken = "click";
         }
         "textbox" => {
@@ -192,25 +222,32 @@ pub async fn handle_act(registry: &mut ToolRegistry, arguments: Value) -> Result
                 let tab_clone = tab.clone();
                 let sel = target_selector.to_string();
                 tokio::task::spawn_blocking(move || -> Result<()> {
-                    let element = tab_clone.find_element(&sel)
+                    let element = tab_clone
+                        .find_element(&sel)
                         .map_err(|e| anyhow::anyhow!("Element not found: {}", e))?;
-                    element.click()
+                    element
+                        .click()
                         .map_err(|e| anyhow::anyhow!("Focus failed: {}", e))?;
-                    element.type_into(&text_to_type)
+                    element
+                        .type_into(&text_to_type)
                         .map_err(|e| anyhow::anyhow!("Type failed: {}", e))?;
                     Ok(())
-                }).await??;
+                })
+                .await??;
                 action_taken = "type";
             } else {
                 let tab_clone = tab.clone();
                 let sel = target_selector.to_string();
                 tokio::task::spawn_blocking(move || -> Result<()> {
-                    let element = tab_clone.find_element(&sel)
+                    let element = tab_clone
+                        .find_element(&sel)
                         .map_err(|e| anyhow::anyhow!("Element not found: {}", e))?;
-                    element.click()
+                    element
+                        .click()
                         .map_err(|e| anyhow::anyhow!("Focus failed: {}", e))?;
                     Ok(())
-                }).await??;
+                })
+                .await??;
                 action_taken = "focus";
             }
         }
@@ -218,12 +255,15 @@ pub async fn handle_act(registry: &mut ToolRegistry, arguments: Value) -> Result
             let tab_clone = tab.clone();
             let sel = target_selector.to_string();
             tokio::task::spawn_blocking(move || -> Result<()> {
-                let element = tab_clone.find_element(&sel)
+                let element = tab_clone
+                    .find_element(&sel)
                     .map_err(|e| anyhow::anyhow!("Element not found: {}", e))?;
-                element.click()
+                element
+                    .click()
                     .map_err(|e| anyhow::anyhow!("Click failed: {}", e))?;
                 Ok(())
-            }).await??;
+            })
+            .await??;
             action_taken = "click";
         }
     }

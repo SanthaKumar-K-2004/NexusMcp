@@ -2,7 +2,6 @@ use super::Tool;
 use anyhow::Result;
 use serde_json::{json, Value};
 
-
 pub struct BrowserResearchTool;
 
 impl BrowserResearchTool {
@@ -37,11 +36,21 @@ impl Tool for BrowserResearchTool {
         let urls: Vec<String> = arguments
             .get("urls")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
-        let extract_mode = arguments.get("extract_mode").and_then(|v| v.as_str()).unwrap_or("markdown");
-        let concurrency = arguments.get("concurrency").and_then(|v| v.as_u64()).unwrap_or(8) as usize;
+        let extract_mode = arguments
+            .get("extract_mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("markdown");
+        let concurrency = arguments
+            .get("concurrency")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(8) as usize;
 
         let client = reqwest::Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -55,11 +64,13 @@ impl Tool for BrowserResearchTool {
             let client = client.clone();
             let mode = extract_mode.to_string();
             let sem = semaphore.clone();
-            
+
             let handle = tokio::spawn(async move {
                 let _permit = match sem.acquire().await {
                     Ok(p) => p,
-                    Err(_) => return json!({ "url": url, "status": "failed", "message": "Semaphore error" })
+                    Err(_) => {
+                        return json!({ "url": url, "status": "failed", "message": "Semaphore error" })
+                    }
                 };
 
                 match client.get(&url).send().await {
@@ -68,17 +79,23 @@ impl Tool for BrowserResearchTool {
                         if status.is_success() {
                             if let Ok(html) = resp.text().await {
                                 let title = if html.contains("<title>") {
-                                    html.split("<title>").nth(1).unwrap_or("").split("</title>").next().unwrap_or("Page").to_string()
+                                    html.split("<title>")
+                                        .nth(1)
+                                        .unwrap_or("")
+                                        .split("</title>")
+                                        .next()
+                                        .unwrap_or("Page")
+                                        .to_string()
                                 } else {
                                     "Page".to_string()
                                 };
-                                
+
                                 let extracted = if mode == "markdown" {
                                     html2md::parse_html(&html)
                                 } else {
                                     html.chars().take(2000).collect()
                                 };
-                                
+
                                 return json!({
                                     "url": url,
                                     "title": title,
@@ -89,7 +106,7 @@ impl Tool for BrowserResearchTool {
                         }
                         json!({ "url": url, "status": "failed", "message": format!("HTTP {}", status) })
                     }
-                    Err(e) => json!({ "url": url, "status": "failed", "message": e.to_string() })
+                    Err(e) => json!({ "url": url, "status": "failed", "message": e.to_string() }),
                 }
             });
             handles.push(handle);

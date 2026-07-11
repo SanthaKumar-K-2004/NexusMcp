@@ -1,14 +1,22 @@
 use super::{Tool, ToolRegistry};
-use serde_json::{json, Value};
 use anyhow::Result;
+use serde_json::{json, Value};
 
 pub struct BrowserSmartRetryTool;
-impl BrowserSmartRetryTool { pub fn new() -> Self { Self } }
+impl BrowserSmartRetryTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait::async_trait]
 impl Tool for BrowserSmartRetryTool {
-    fn name(&self) -> &str { "browser_smart_retry" }
-    fn description(&self) -> &str { "Retry a failed navigation with escalating stealth levels (low → medium → high)." }
+    fn name(&self) -> &str {
+        "browser_smart_retry"
+    }
+    fn description(&self) -> &str {
+        "Retry a failed navigation with escalating stealth levels (low → medium → high)."
+    }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -25,13 +33,17 @@ impl Tool for BrowserSmartRetryTool {
 }
 
 pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
-    let url = arguments.get("url").and_then(|v| v.as_str())
+    let url = arguments
+        .get("url")
+        .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing url — provide the URL to retry navigation for"))?;
-    let max_retries = arguments.get("max_retries").and_then(|v| v.as_u64()).unwrap_or(3);
+    let max_retries = arguments
+        .get("max_retries")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(3);
 
     // Security Hardening: Validate URL scheme to prevent SSRF or local file traversal
-    let parsed_url = url::Url::parse(url)
-        .map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
+    let parsed_url = url::Url::parse(url).map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
     if parsed_url.scheme() == "file" && std::env::var("NEXUS_ALLOW_LOCAL_FILES").is_err() {
         return Err(anyhow::anyhow!("Access to local file:// scheme is disabled by default for security. Set NEXUS_ALLOW_LOCAL_FILES=1 to enable."));
     }
@@ -44,12 +56,16 @@ pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -
         let level = stealth_levels.get(attempt as usize).unwrap_or(&"high");
 
         let session_id = registry.session_manager.create_session(None)?;
-        let session = registry.session_manager.get_session_mut(&session_id)
+        let session = registry
+            .session_manager
+            .get_session_mut(&session_id)
             .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
         // Anti-Bot: Eagerly create target tab before applying stealth scripts
         if session.tab.is_none() {
-            let tab = browser.new_tab().map_err(|e| anyhow::anyhow!("Failed to create tab: {}", e))?;
+            let tab = browser
+                .new_tab()
+                .map_err(|e| anyhow::anyhow!("Failed to create tab: {}", e))?;
             session.tab = Some(tab);
         }
 
@@ -61,7 +77,8 @@ pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -
                 let tab_clone = tab.clone();
                 let _ = tokio::task::spawn_blocking(move || {
                     let _ = tab_clone.evaluate(&script_owned, false);
-                }).await;
+                })
+                .await;
             }
         }
 

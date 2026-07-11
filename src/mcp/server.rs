@@ -120,7 +120,7 @@ async fn handle_request(
                             error: None,
                         },
                         Err(e) => {
-                            // Protocol compliance: tool call execution failures must be returned 
+                            // Protocol compliance: tool call execution failures must be returned
                             // in a successful JSON-RPC response with isError: true inside result
                             JsonRpcResponse {
                                 jsonrpc: "2.0".to_string(),
