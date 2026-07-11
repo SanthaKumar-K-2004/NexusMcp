@@ -90,13 +90,23 @@ pub async fn handle_find_element(registry: &mut ToolRegistry, arguments: Value) 
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing instruction"))?;
 
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
     let res = registry.stagehand.find_element(instruction, &html);
     Ok(serde_json::to_string_pretty(&res)?)
 }
 
 pub async fn handle_trafilatura(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
     let session_id = registry.get_active_session_id().unwrap_or_default();
     let url = registry
         .session_manager

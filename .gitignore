@@ -1,1 +1,9 @@
 /target
+*.db
+*.db-journal
+*.log
+.env
+.DS_Store
+.idea/
+.vscode/
+/tmp

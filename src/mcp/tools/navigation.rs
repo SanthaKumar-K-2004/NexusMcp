@@ -296,14 +296,13 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
 
     let profile_id = arguments.get("profile_id").and_then(|v| v.as_str());
 
-    // Security Hardening: Validate URL scheme to prevent SSRF or local file traversal
-    let parsed_url = url::Url::parse(url).map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
-    if parsed_url.scheme() == "file" && std::env::var("NEXUS_ALLOW_LOCAL_FILES").is_err() {
-        return Err(anyhow::anyhow!("Access to local file:// scheme is disabled by default for security. Set NEXUS_ALLOW_LOCAL_FILES=1 to enable."));
-    }
+    ToolRegistry::validate_fetch_url(url)?;
 
     // Detect bot protection from previous visit or empty string for first visit
-    let existing_html = registry.get_active_html().unwrap_or_default();
+    let existing_html = match registry.get_active_tab() {
+        Some(tab) => ToolRegistry::html_from_tab(tab).await.unwrap_or_default(),
+        None => String::new(),
+    };
     let detection = registry.crawl4ai.detect_protection(url, &existing_html);
     let protection = detection["protection_level"].as_str().unwrap_or("none");
     let mut stealth_level = if protection == "high" {
@@ -314,15 +313,10 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
 
     // Create session with optional profile
     let session_id = if let Some(pid) = profile_id {
-        registry.memory.push(format!("Loaded profile: {}", pid));
-        if registry.memory.len() > 100 {
-            registry.memory.remove(0);
-        }
-        registry
-            .session_manager
-            .create_session(Some(pid.to_string()))?
+        registry.push_memory(format!("Loaded profile: {}", pid));
+        registry.create_session(Some(pid.to_string()))?
     } else {
-        registry.session_manager.create_session(None)?
+        registry.create_session(None)?
     };
 
     let browser = registry.session_manager.get_or_create_browser()?;
@@ -371,7 +365,10 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
         match session.navigate(url, &browser).await {
             Ok(page) => {
                 // Check if response page has bot protection
-                let html = session.get_current_html().unwrap_or_default();
+                let html = match session.tab.clone() {
+                    Some(tab) => ToolRegistry::html_from_tab(tab).await.unwrap_or_default(),
+                    None => String::new(),
+                };
                 let post_detection = registry.crawl4ai.detect_protection(url, &html);
                 let post_protection = post_detection["protection_level"]
                     .as_str()
@@ -400,15 +397,14 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
     }
 
     let page = page_result.ok_or_else(|| anyhow::anyhow!("Navigation failed"))?;
-    let session = registry
+    let current_page_count = registry
         .session_manager
         .get_session(&session_id)
-        .ok_or_else(|| anyhow::anyhow!("Session not found after navigation"))?;
+        .ok_or_else(|| anyhow::anyhow!("Session not found after navigation"))?
+        .pages
+        .len();
 
-    registry.memory.push(format!("Navigated to: {}", url));
-    if registry.memory.len() > 100 {
-        registry.memory.remove(0);
-    }
+    registry.push_memory(format!("Navigated to: {}", url));
     registry
         .vector_memory
         .store(url, &format!("Visited page: {}", page.title));
@@ -427,7 +423,7 @@ pub async fn handle_navigate(registry: &mut ToolRegistry, arguments: Value) -> R
         "protection_level": protection,
         "stealth_level": stealth_level,
         "profile_used": profile_id,
-        "current_page_count": session.pages.len()
+        "current_page_count": current_page_count
     });
 
     Ok(serde_json::to_string_pretty(&response)?)
@@ -452,10 +448,7 @@ pub async fn handle_evaluate(registry: &mut ToolRegistry, arguments: Value) -> R
     })
     .await??;
 
-    registry.memory.push(format!("Executed JS: {}", script));
-    if registry.memory.len() > 100 {
-        registry.memory.remove(0);
-    }
+    registry.push_memory(format!("Executed JS: {}", script));
 
     let response = json!({
         "success": true,
@@ -654,13 +647,16 @@ pub async fn handle_reload(registry: &mut ToolRegistry, _arguments: Value) -> Re
 
 pub async fn handle_tab_new(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
     let url = arguments.get("url").and_then(|v| v.as_str());
+    if let Some(url) = url {
+        ToolRegistry::validate_fetch_url(url)?;
+    }
     let browser = registry.session_manager.get_or_create_browser()?;
 
     // Use existing session or create one
     let session_id = if let Some(sid) = registry.get_active_session_id() {
         sid
     } else {
-        registry.session_manager.create_session(None)?
+        registry.create_session(None)?
     };
 
     let session = registry
@@ -695,6 +691,7 @@ pub async fn handle_tab_switch(registry: &mut ToolRegistry, arguments: Value) ->
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
     session.switch_tab(tab_id)?;
+    registry.set_active_session(session_id);
 
     let response = json!({
         "success": true,
@@ -713,7 +710,11 @@ pub async fn handle_tab_close(registry: &mut ToolRegistry, _arguments: Value) ->
         .get_session_mut(&session_id)
         .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
-    session.close_current_tab()?;
+    session.close_current_tab().await?;
+    let remove_empty_session = session.tab.is_none();
+    if remove_empty_session {
+        registry.remove_session(&session_id);
+    }
 
     let response = json!({
         "success": true,

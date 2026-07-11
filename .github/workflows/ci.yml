@@ -10,6 +10,7 @@ env:
   CARGO_TERM_COLOR: always
   NO_SANDBOX: "1"
   NEXUS_NO_SANDBOX: "1"
+  CHROME_PATH: /usr/bin/chromium
 
 jobs:
   build:
@@ -22,7 +23,7 @@ jobs:
       - name: Install Chromium
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser ca-certificates fonts-liberation
+          sudo apt-get install -y chromium ca-certificates fonts-liberation
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable

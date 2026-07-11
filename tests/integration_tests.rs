@@ -83,7 +83,7 @@ async fn test_real_browser_and_hidden_gems_flow() -> Result<(), anyhow::Error> {
     assert_eq!(page.status, "loaded");
     assert!(page.load_time_ms > 0);
 
-    let html = session.get_current_html().unwrap();
+    let html = session.get_current_html().await.unwrap();
     assert!(html.contains("Real Browser E2E Rendering Working"));
 
     // Test REAL JS Evaluation via CDP
@@ -211,12 +211,12 @@ async fn test_tab_management() -> Result<(), anyhow::Error> {
     assert_eq!(session.pages.len(), 2);
 
     // Close current tab (leaves the first tab open)
-    session.close_current_tab()?;
+    session.close_current_tab().await?;
     assert_eq!(session.pages.len(), 1);
     assert!(session.tab.is_some());
 
     // Close the last tab (clears everything)
-    session.close_current_tab()?;
+    session.close_current_tab().await?;
     assert!(session.tab.is_none());
     assert!(session.pages.is_empty());
 

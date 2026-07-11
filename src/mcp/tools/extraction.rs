@@ -152,7 +152,12 @@ impl Tool for BrowserScreenshotTool {
 // ==================== HANDLER IMPLEMENTATIONS ====================
 
 pub async fn handle_markdown(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
     let session_id = registry.get_active_session_id().unwrap_or_default();
     let session = registry
         .session_manager
@@ -170,12 +175,7 @@ pub async fn handle_markdown(registry: &mut ToolRegistry, _arguments: Value) -> 
 
     let markdown = registry.extractor.html_to_markdown(&html, &url)?;
     registry.vector_memory.store(&url, &markdown);
-    registry
-        .memory
-        .push("Extracted Markdown from live page".to_string());
-    if registry.memory.len() > 100 {
-        registry.memory.remove(0);
-    }
+    registry.push_memory("Extracted Markdown from live page".to_string());
 
     let response = json!({
         "success": true,
@@ -248,7 +248,12 @@ pub async fn handle_pdf(registry: &mut ToolRegistry, _arguments: Value) -> Resul
 }
 
 pub async fn handle_links(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
 
     let document = scraper::Html::parse_document(&html);
     let selector = scraper::Selector::parse("a").unwrap();
@@ -275,7 +280,12 @@ pub async fn handle_links(registry: &mut ToolRegistry, _arguments: Value) -> Res
 
 pub async fn handle_extract(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
     let schema = arguments.get("schema").cloned().unwrap_or(json!({}));
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
 
     if schema.is_object() && !schema.as_object().map_or(true, |o| o.is_empty()) {
         let extraction = registry.firecrawl.extract_with_schema(&html, schema);

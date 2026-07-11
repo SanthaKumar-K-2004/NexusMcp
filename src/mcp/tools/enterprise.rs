@@ -62,10 +62,9 @@ pub async fn handle_captcha(registry: &mut ToolRegistry, arguments: Value) -> Re
         .and_then(|v| v.as_str())
         .unwrap_or("detect");
 
-    let html = if let Ok(h) = registry.get_active_html() {
-        h
-    } else {
-        String::new()
+    let html = match registry.get_active_tab() {
+        Some(tab) => ToolRegistry::html_from_tab(tab).await.unwrap_or_default(),
+        None => String::new(),
     };
     let detection = registry.crawl4ai.detect_protection("", &html);
 

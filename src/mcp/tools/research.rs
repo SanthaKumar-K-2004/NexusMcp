@@ -1,4 +1,4 @@
-use super::Tool;
+use super::{Tool, ToolRegistry};
 use anyhow::Result;
 use serde_json::{json, Value};
 
@@ -61,6 +61,13 @@ impl Tool for BrowserResearchTool {
         let mut handles = Vec::new();
 
         for url in urls {
+            if let Err(e) = ToolRegistry::validate_fetch_url(&url) {
+                handles.push(tokio::spawn(async move {
+                    json!({ "url": url, "status": "failed", "message": e.to_string() })
+                }));
+                continue;
+            }
+
             let client = client.clone();
             let mode = extract_mode.to_string();
             let sem = semaphore.clone();

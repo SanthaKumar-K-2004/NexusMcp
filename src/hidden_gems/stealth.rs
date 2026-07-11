@@ -50,9 +50,9 @@ impl PlaywrightStealth {
         // === Always applied ===
 
         // 1. Hide navigator.webdriver
-        scripts.push(format!(
-            "Object.defineProperty(navigator, 'webdriver', {{ get: () => undefined }});"
-        ));
+        scripts.push(
+            "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });".to_string(),
+        );
         techniques.push("webdriver_hide");
 
         if level == "medium" || level == "high" {

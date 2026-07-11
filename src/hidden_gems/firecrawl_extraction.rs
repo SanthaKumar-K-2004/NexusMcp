@@ -25,6 +25,10 @@ impl FirecrawlExtractor {
             .next()
             .map(|e| e.text().collect::<String>())
             .unwrap_or_default();
+        let email_re = regex::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+            .expect("static email regex is valid");
+        let price_re =
+            regex::Regex::new(r"[$€£¥]\s?\d+(?:[.,]\d{2})?").expect("static price regex is valid");
 
         if let Some(obj) = schema.as_object() {
             for (key, _val) in obj {
@@ -33,26 +37,20 @@ impl FirecrawlExtractor {
                         extracted.insert("title".to_string(), json!(title));
                     }
                     "emails" => {
-                        if let Ok(re) =
-                            regex::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-                        {
-                            let emails: std::collections::HashSet<String> = re
-                                .find_iter(&body_text)
-                                .map(|m| m.as_str().to_string())
-                                .collect();
-                            let emails_vec: Vec<String> = emails.into_iter().collect();
-                            extracted.insert("emails".to_string(), json!(emails_vec));
-                        }
+                        let emails: std::collections::HashSet<String> = email_re
+                            .find_iter(&body_text)
+                            .map(|m| m.as_str().to_string())
+                            .collect();
+                        let emails_vec: Vec<String> = emails.into_iter().collect();
+                        extracted.insert("emails".to_string(), json!(emails_vec));
                     }
                     "prices" => {
-                        if let Ok(re) = regex::Regex::new(r"[$€£¥]\s?\d+(?:[.,]\d{2})?") {
-                            let prices: std::collections::HashSet<String> = re
-                                .find_iter(&body_text)
-                                .map(|m| m.as_str().to_string())
-                                .collect();
-                            let prices_vec: Vec<String> = prices.into_iter().collect();
-                            extracted.insert("prices".to_string(), json!(prices_vec));
-                        }
+                        let prices: std::collections::HashSet<String> = price_re
+                            .find_iter(&body_text)
+                            .map(|m| m.as_str().to_string())
+                            .collect();
+                        let prices_vec: Vec<String> = prices.into_iter().collect();
+                        extracted.insert("prices".to_string(), json!(prices_vec));
                     }
                     "links_count" => {
                         let link_sel = scraper::Selector::parse("a").unwrap();

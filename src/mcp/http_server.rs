@@ -79,6 +79,7 @@ async fn list_tools(State(state): State<Arc<AppState>>) -> Json<Value> {
     Json(json!({ "tools": tools }))
 }
 
+#[axum::debug_handler]
 async fn call_tool(State(state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
     let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("");
     let arguments = payload.get("arguments").cloned().unwrap_or(json!({}));

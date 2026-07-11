@@ -42,11 +42,7 @@ pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -
         .and_then(|v| v.as_u64())
         .unwrap_or(3);
 
-    // Security Hardening: Validate URL scheme to prevent SSRF or local file traversal
-    let parsed_url = url::Url::parse(url).map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
-    if parsed_url.scheme() == "file" && std::env::var("NEXUS_ALLOW_LOCAL_FILES").is_err() {
-        return Err(anyhow::anyhow!("Access to local file:// scheme is disabled by default for security. Set NEXUS_ALLOW_LOCAL_FILES=1 to enable."));
-    }
+    ToolRegistry::validate_fetch_url(url)?;
 
     let browser = registry.session_manager.get_or_create_browser()?;
     let stealth_levels = ["low", "medium", "high"];
@@ -55,7 +51,7 @@ pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -
     for attempt in 0..max_retries {
         let level = stealth_levels.get(attempt as usize).unwrap_or(&"high");
 
-        let session_id = registry.session_manager.create_session(None)?;
+        let session_id = registry.create_session(None)?;
         let session = registry
             .session_manager
             .get_session_mut(&session_id)
@@ -84,7 +80,10 @@ pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -
 
         match session.navigate(url, &browser).await {
             Ok(page) => {
-                let html = session.get_current_html().unwrap_or_default();
+                let html = match session.tab.clone() {
+                    Some(tab) => ToolRegistry::html_from_tab(tab).await.unwrap_or_default(),
+                    None => String::new(),
+                };
                 let detection = registry.crawl4ai.detect_protection(url, &html);
                 let blocked = detection["protection_level"].as_str() == Some("high");
 
@@ -110,6 +109,8 @@ pub async fn handle_smart_retry(registry: &mut ToolRegistry, arguments: Value) -
                 last_error = e.to_string();
             }
         }
+
+        registry.remove_session(&session_id);
 
         // Brief delay between retries
         tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt + 1))).await;

@@ -25,6 +25,7 @@ pub mod stealth;
 pub struct ToolRegistry {
     tools: HashMap<String, Box<dyn Tool + Send + Sync>>,
     pub session_manager: SessionManager,
+    pub active_session_id: Option<String>,
     pub extractor: AdvancedExtractor,
     pub agent: AgentEnhancer,
     pub memory: Vec<String>,
@@ -57,6 +58,7 @@ impl ToolRegistry {
         Self {
             tools: HashMap::new(),
             session_manager: SessionManager::new(),
+            active_session_id: None,
             extractor: AdvancedExtractor::new(),
             agent: AgentEnhancer::new(),
             memory: Vec::new(),
@@ -153,27 +155,103 @@ impl ToolRegistry {
     // ==================== HELPERS ====================
 
     pub fn get_active_tab(&self) -> Option<Arc<headless_chrome::Tab>> {
-        self.session_manager
-            .sessions
-            .values()
-            .find_map(|session| session.tab.clone())
+        self.get_active_session_id()
+            .and_then(|id| self.session_manager.get_session(&id))
+            .and_then(|session| session.tab.clone())
     }
 
     pub fn get_active_session_id(&self) -> Option<String> {
-        self.session_manager.sessions.keys().next().cloned()
+        self.active_session_id
+            .as_ref()
+            .filter(|id| self.session_manager.sessions.contains_key(*id))
+            .cloned()
     }
 
-    pub fn get_active_html(&self) -> Result<String> {
-        let session_id = self
-            .get_active_session_id()
-            .ok_or_else(|| anyhow::anyhow!("No active session"))?;
-        let session = self
-            .session_manager
-            .get_session(&session_id)
-            .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
-        session
-            .get_current_html()
+    pub fn set_active_session(&mut self, session_id: String) {
+        self.active_session_id = Some(session_id);
+    }
+
+    pub fn create_session(&mut self, profile_id: Option<String>) -> Result<String> {
+        let session_id = self.session_manager.create_session(profile_id)?;
+        self.set_active_session(session_id.clone());
+        Ok(session_id)
+    }
+
+    pub fn remove_session(&mut self, session_id: &str) {
+        self.session_manager.remove_session(session_id);
+        if self.active_session_id.as_deref() == Some(session_id) {
+            self.active_session_id = self.session_manager.sessions.keys().next().cloned();
+        }
+    }
+
+    pub fn push_memory(&mut self, msg: String) {
+        self.memory.push(msg);
+        if self.memory.len() > 100 {
+            self.memory.remove(0);
+        }
+    }
+
+    pub async fn get_active_html(&self) -> Result<String> {
+        let tab = self
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?;
+
+        Self::html_from_tab(tab).await
+    }
+
+    pub async fn html_from_tab(tab: Arc<headless_chrome::Tab>) -> Result<String> {
+        tokio::task::spawn_blocking(move || tab.get_content().ok())
+            .await
+            .ok()
+            .flatten()
             .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))
+    }
+
+    pub fn validate_fetch_url(raw_url: &str) -> Result<url::Url> {
+        let parsed = url::Url::parse(raw_url).map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
+
+        if parsed.scheme() == "file" {
+            if std::env::var("NEXUS_ALLOW_LOCAL_FILES").is_ok() {
+                return Ok(parsed);
+            }
+            return Err(anyhow::anyhow!("Access to local file:// scheme is disabled by default for security. Set NEXUS_ALLOW_LOCAL_FILES=1 to enable."));
+        }
+
+        if !matches!(parsed.scheme(), "http" | "https") {
+            return Err(anyhow::anyhow!(
+                "Unsupported URL scheme '{}'. Only http and https are enabled by default.",
+                parsed.scheme()
+            ));
+        }
+
+        match parsed.host() {
+            Some(url::Host::Ipv4(ip)) => {
+                if ip.is_private()
+                    || ip.is_loopback()
+                    || ip.is_link_local()
+                    || ip.is_broadcast()
+                    || ip.is_unspecified()
+                {
+                    return Err(anyhow::anyhow!(
+                        "Refusing to access private or local IPv4 host"
+                    ));
+                }
+            }
+            Some(url::Host::Ipv6(ip)) => {
+                if ip.is_loopback() || ip.is_unspecified() {
+                    return Err(anyhow::anyhow!("Refusing to access local IPv6 host"));
+                }
+            }
+            Some(url::Host::Domain(domain)) => {
+                let domain = domain.trim_end_matches('.').to_ascii_lowercase();
+                if domain == "localhost" || domain.ends_with(".localhost") {
+                    return Err(anyhow::anyhow!("Refusing to access localhost domain"));
+                }
+            }
+            None => return Err(anyhow::anyhow!("URL must include a host")),
+        }
+
+        Ok(parsed)
     }
 
     // ==================== DISPATCH ====================

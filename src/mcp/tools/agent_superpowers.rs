@@ -68,7 +68,12 @@ pub async fn handle_observe(registry: &mut ToolRegistry, arguments: Value) -> Re
         .and_then(|v| v.as_str())
         .unwrap_or("analyze page");
 
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
     let document = scraper::Html::parse_document(&html);
 
     // Collect all interactive elements on the page
@@ -165,7 +170,12 @@ pub async fn handle_act(registry: &mut ToolRegistry, arguments: Value) -> Result
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing goal"))?;
 
-    let html = registry.get_active_html()?;
+    let html = ToolRegistry::html_from_tab(
+        registry
+            .get_active_tab()
+            .ok_or_else(|| anyhow::anyhow!("No page loaded — navigate to a URL first"))?,
+    )
+    .await?;
     let tab = registry
         .get_active_tab()
         .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;

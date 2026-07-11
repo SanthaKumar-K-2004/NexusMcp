@@ -81,6 +81,14 @@ impl SessionManager {
         Ok(session_id)
     }
 
+    pub fn remove_session(&mut self, session_id: &str) -> Option<BrowserSession> {
+        let removed = self.sessions.remove(session_id);
+        if removed.is_some() {
+            crate::observability::set_active_sessions(self.sessions.len() as i64);
+        }
+        removed
+    }
+
     pub fn get_session(&self, session_id: &str) -> Option<&BrowserSession> {
         self.sessions.get(session_id)
     }
@@ -95,6 +103,7 @@ impl SessionManager {
             drop(browser);
         }
         self.sessions.clear();
+        crate::observability::set_active_sessions(0);
     }
 }
 
@@ -305,11 +314,11 @@ impl BrowserSession {
     }
 
     /// Close current tab using the real target close method
-    pub fn close_current_tab(&mut self) -> Result<()> {
+    pub async fn close_current_tab(&mut self) -> Result<()> {
         if let Some(page_id) = &self.current_page {
             if let Some(tab) = self.tabs.remove(page_id) {
                 // Terminate target tab context to avoid resource leaks
-                let _ = tokio::task::block_in_place(|| tab.close(true));
+                let _ = tokio::task::spawn_blocking(move || tab.close(true)).await;
             }
             if let Some(pos) = self.pages.iter().position(|p| &p.id == page_id) {
                 self.pages.remove(pos);
@@ -467,9 +476,13 @@ impl BrowserSession {
     }
 
     /// Get HTML content of current page from the live browser tab
-    pub fn get_current_html(&self) -> Option<String> {
+    pub async fn get_current_html(&self) -> Option<String> {
         if let Some(tab) = &self.tab {
-            tokio::task::block_in_place(|| tab.get_content().ok())
+            let tab = tab.clone();
+            tokio::task::spawn_blocking(move || tab.get_content().ok())
+                .await
+                .ok()
+                .flatten()
         } else {
             None
         }

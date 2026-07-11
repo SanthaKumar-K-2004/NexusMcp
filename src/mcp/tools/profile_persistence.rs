@@ -43,9 +43,7 @@ pub async fn handle_load_profile(registry: &mut ToolRegistry, arguments: Value) 
         .map_err(|e| anyhow::anyhow!("Failed to query profile: {}", e))?;
 
     if let Some(profile) = profile_opt {
-        let session_id = registry
-            .session_manager
-            .create_session(Some(profile.id.clone()))?;
+        let session_id = registry.create_session(Some(profile.id.clone()))?;
 
         let response = json!({
             "success": true,
