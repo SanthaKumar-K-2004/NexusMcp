@@ -21,18 +21,33 @@ RUN cargo build --release
 # Runtime image
 FROM debian:bookworm-slim
 
+# Install Chromium and dependency libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    ca-certificates \
+    fonts-liberation \
+    libnss3 \
+    libnspr4 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Chrome Path for headless_chrome
+ENV CHROME_PATH=/usr/bin/chromium
+ENV NO_SANDBOX=1
+ENV NEXUS_NO_SANDBOX=1
+ENV NEXUS_DB_PATH=/data/nexusmcp_profiles.db
+
 WORKDIR /app
 
-# Install minimal dependencies
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+# Create data directory for SQLite profile storage and set permissions for non-root execution
+RUN mkdir -p /data && chown -R nobody:nogroup /data
 
 # Copy binary
 COPY --from=builder /app/target/release/nexusmcp /usr/local/bin/nexusmcp
 
-# Create data directory for SQLite
-RUN mkdir -p /data
+# Run as non-root user
+USER nobody
 
-ENV NEXUS_DB_PATH=/data/nexusmcp.db
+EXPOSE 3000
 
-ENTRYPOINT ["nexusmcp"]
+ENTRYPOINT ["/usr/local/bin/nexusmcp"]
 CMD ["mcp", "--stealth"]

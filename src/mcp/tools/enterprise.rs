@@ -1,8 +1,7 @@
-use super::Tool;
-use anyhow::Result;
+use super::{Tool, ToolRegistry};
 use serde_json::{json, Value};
+use anyhow::Result;
 
-/// CAPTCHA and anti-bot detection using real HTML analysis (Crawl4AI-based)
 pub struct BrowserHandleCaptchaTool;
 impl BrowserHandleCaptchaTool { pub fn new() -> Self { Self } }
 
@@ -24,7 +23,6 @@ impl Tool for BrowserHandleCaptchaTool {
     }
 }
 
-/// Health check returning real browser engine state
 pub struct BrowserHealthCheckTool;
 impl BrowserHealthCheckTool { pub fn new() -> Self { Self } }
 
@@ -38,4 +36,72 @@ impl Tool for BrowserHealthCheckTool {
     async fn call(&self, _arguments: Value) -> Result<String> {
         Err(anyhow::anyhow!("Routed via ToolRegistry::call_tool"))
     }
+}
+
+// ==================== HANDLER IMPLEMENTATIONS ====================
+
+pub async fn handle_captcha(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
+    let action = arguments.get("action").and_then(|v| v.as_str()).unwrap_or("detect");
+
+    let html = if let Ok(h) = registry.get_active_html() { h } else { String::new() };
+    let detection = registry.crawl4ai.detect_protection("", &html);
+
+    let response = match action {
+        "detect" => {
+            let has_captcha = detection["detection_count"].as_u64().unwrap_or(0) > 0;
+            json!({
+                "success": true,
+                "captcha_detected": has_captcha,
+                "protection_level": detection["protection_level"],
+                "detections": detection["detections"],
+                "recommended_action": detection["recommended_action"],
+                "message": if has_captcha { "Bot protection detected on live page" } else { "No bot protection detected" }
+            })
+        }
+        "bypass" => {
+            // Apply high stealth and retry navigation
+            if let Some(tab) = registry.get_active_tab() {
+                let stealth_config = registry.stealth_engine.apply_stealth("high");
+                if let Some(script) = stealth_config["script"].as_str() {
+                    let script_owned = script.to_string();
+                    let tab_clone = tab.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = tab_clone.evaluate(&script_owned, false);
+                    }).await;
+                }
+            }
+            json!({
+                "success": true,
+                "action": "bypass",
+                "stealth_applied": "high",
+                "message": "High-stealth fingerprint injected. Re-navigate to attempt bypass."
+            })
+        }
+        _ => json!({
+            "success": false,
+            "message": format!("Unknown action: {}", action)
+        })
+    };
+
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+pub async fn handle_health_check(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
+    let active_sessions = registry.session_manager.sessions.len();
+    let browser_launched = registry.session_manager.browser.is_some();
+    let has_active_tab = registry.get_active_tab().is_some();
+
+    let response = json!({
+        "success": true,
+        "status": "healthy",
+        "details": {
+            "active_sessions": active_sessions,
+            "browser_launched": browser_launched,
+            "has_active_tab": has_active_tab,
+            "engine": "headless_chrome (Chromium CDP)",
+            "memory_entries": registry.memory.len(),
+            "tools_registered": registry.tools.len()
+        }
+    });
+    Ok(serde_json::to_string_pretty(&response)?)
 }

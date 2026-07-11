@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import platform
 import subprocess
 from pathlib import Path
 
@@ -16,7 +17,8 @@ def print_status(msg, status="INFO"):
 
 def ensure_binary():
     root_dir = Path(__file__).parent.resolve()
-    binary_path = root_dir / "target" / "release" / "nexusmcp"
+    binary_name = "nexusmcp.exe" if platform.system() == "Windows" else "nexusmcp"
+    binary_path = root_dir / "target" / "release" / binary_name
     
     if not binary_path.exists():
         print_status("NexusMCP release binary not found. Initiating build...", "INFO")
@@ -70,32 +72,53 @@ def main():
     # 1. Compile/Get Binary
     binary_path = ensure_binary()
     
-    # 2. Configure Claude Desktop
+    # 2. Get standard paths based on platform
+    system = platform.system()
     home = Path.home()
-    claude_paths = [
-        home / ".config" / "Claude" / "claude_desktop_config.json",
-        home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
-    ]
+    
+    claude_paths = []
+    cline_paths = []
+    
+    if system == "Darwin": # macOS
+        claude_paths = [
+            home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+        ]
+        cline_paths = [
+            home / "Library" / "Application Support" / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev" / "settings" / "cline_mcp_settings.json",
+            home / "Library" / "Application Support" / "Code" / "User" / "globalStorage" / "roovet.roo-cline" / "settings" / "cline_mcp_settings.json"
+        ]
+    elif system == "Windows":
+        appdata = Path(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")))
+        claude_paths = [
+            appdata / "Claude" / "claude_desktop_config.json"
+        ]
+        cline_paths = [
+            appdata / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev" / "settings" / "cline_mcp_settings.json",
+            appdata / "Code" / "User" / "globalStorage" / "roovet.roo-cline" / "settings" / "cline_mcp_settings.json"
+        ]
+    else: # Linux and POSIX fallbacks
+        claude_paths = [
+            home / ".config" / "Claude" / "claude_desktop_config.json"
+        ]
+        cline_paths = [
+            home / ".config" / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev" / "settings" / "cline_mcp_settings.json",
+            home / ".config" / "Code" / "User" / "globalStorage" / "roovet.roo-cline" / "settings" / "cline_mcp_settings.json"
+        ]
+    
+    # 3. Configure Claude Desktop
     claude_configured = False
     for path in claude_paths:
-        if path.parent.exists() or os.name == 'posix':
+        if path.parent.exists() or system != "Windows":
             merge_mcp_config(path, binary_path)
             claude_configured = True
             break
             
-    # 3. Configure VS Code extensions (Cline and Roo Code)
-    cline_paths = [
-        # Cline
-        home / ".config" / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev" / "settings" / "cline_mcp_settings.json",
-        # Roo Code
-        home / ".config" / "Code" / "User" / "globalStorage" / "roovet.roo-cline" / "settings" / "cline_mcp_settings.json"
-    ]
-    
+    # 4. Configure VS Code extensions (Cline and Roo Code)
     for path in cline_paths:
         if path.parent.parent.parent.parent.exists():
             merge_mcp_config(path, binary_path)
             
-    # 4. Print GUI client instructions
+    # 5. Print GUI client instructions
     print("\n" + "-" * 50)
     print("🎨 Integration Guidelines for GUI Clients")
     print("-" * 50)

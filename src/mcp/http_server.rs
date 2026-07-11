@@ -22,12 +22,23 @@ pub async fn start_http_server(port: u16, _stealth: bool) -> anyhow::Result<()> 
         registry: Arc::new(Mutex::new(registry)),
     });
 
+    let cors = CorsLayer::new()
+        .allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
+            let host = origin.to_str().unwrap_or("");
+            host.starts_with("http://localhost:") 
+                || host.starts_with("http://127.0.0.1:") 
+                || host.starts_with("https://localhost:") 
+                || host.starts_with("https://127.0.0.1:")
+        }))
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any);
+
     let app = Router::new()
         .route("/health", get(health_check))
         .route("/metrics", get(metrics_handler))           // Prometheus metrics
         .route("/mcp/tools", get(list_tools))
         .route("/mcp/call", post(call_tool))
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", port);

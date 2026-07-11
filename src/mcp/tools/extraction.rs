@@ -1,9 +1,9 @@
-use super::Tool;
-use anyhow::Result;
+use super::{Tool, ToolRegistry};
 use serde_json::{json, Value};
+use anyhow::Result;
 
 // ==================== EXTRACTION TOOLS ====================
-// Schema-only definitions. Actual execution in ToolRegistry::handle_* methods.
+// Schema-only definitions. Actual execution in functions below.
 
 pub struct BrowserMarkdownTool;
 impl BrowserMarkdownTool { pub fn new() -> Self { Self } }
@@ -106,5 +106,142 @@ impl Tool for BrowserScreenshotTool {
     }
     async fn call(&self, _arguments: Value) -> Result<String> {
         Err(anyhow::anyhow!("Routed via ToolRegistry::call_tool"))
+    }
+}
+
+// ==================== HANDLER IMPLEMENTATIONS ====================
+
+pub async fn handle_markdown(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
+    let html = registry.get_active_html()?;
+    let session_id = registry.get_active_session_id().unwrap_or_default();
+    let session = registry.session_manager.get_session(&session_id)
+        .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
+
+    let url = session.current_page_state().map(|p| p.url.clone()).unwrap_or_default();
+    let title = session.current_page_state().map(|p| p.title.clone()).unwrap_or_default();
+
+    let markdown = registry.extractor.html_to_markdown(&html, &url)?;
+    registry.vector_memory.store(&url, &markdown);
+    registry.memory.push("Extracted Markdown from live page".to_string());
+    if registry.memory.len() > 100 { registry.memory.remove(0); }
+
+    let response = json!({
+        "success": true,
+        "markdown": markdown,
+        "metadata": {
+            "title": title,
+            "url": url,
+            "word_count": markdown.split_whitespace().count(),
+            "extraction_method": "html2md from live browser content"
+        }
+    });
+
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+pub async fn handle_screenshot(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
+    let tab = registry.get_active_tab()
+        .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
+
+    let tab_clone = tab.clone();
+    let png_bytes = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+        tab_clone.capture_screenshot(
+            headless_chrome::protocol::cdp::Page::CaptureScreenshotFormatOption::Png,
+            None,
+            None,
+            true
+        ).map_err(|e| anyhow::anyhow!("Failed to capture screenshot: {}", e))
+    }).await??;
+
+    use base64::{Engine as _, engine::general_purpose};
+    let b64 = general_purpose::STANDARD.encode(&png_bytes);
+
+    let response = json!({
+        "success": true,
+        "screenshot_base64": b64,
+        "format": "png",
+        "size_bytes": png_bytes.len(),
+        "message": "Screenshot captured from live browser"
+    });
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+pub async fn handle_pdf(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
+    let tab = registry.get_active_tab()
+        .ok_or_else(|| anyhow::anyhow!("No active browser session — navigate first"))?;
+
+    let tab_clone = tab.clone();
+    let pdf_bytes = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+        tab_clone.print_to_pdf(None)
+            .map_err(|e| anyhow::anyhow!("Failed to print to PDF: {}", e))
+    }).await??;
+
+    use base64::{Engine as _, engine::general_purpose};
+    let b64 = general_purpose::STANDARD.encode(&pdf_bytes);
+
+    let response = json!({
+        "success": true,
+        "pdf_base64": b64,
+        "size_bytes": pdf_bytes.len(),
+        "message": "PDF generated from live browser"
+    });
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+pub async fn handle_links(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
+    let html = registry.get_active_html()?;
+
+    let document = scraper::Html::parse_document(&html);
+    let selector = scraper::Selector::parse("a").unwrap();
+    let mut links = Vec::new();
+
+    for element in document.select(&selector) {
+        let text = element.text().collect::<String>().trim().to_string();
+        if let Some(href) = element.value().attr("href") {
+            links.push(json!({
+                "url": href,
+                "text": text
+            }));
+        }
+    }
+
+    let response = json!({
+        "success": true,
+        "links": links,
+        "count": links.len(),
+        "engine": "scraper on live browser HTML"
+    });
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+pub async fn handle_extract(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
+    let schema = arguments.get("schema").cloned().unwrap_or(json!({}));
+    let html = registry.get_active_html()?;
+
+    if schema.is_object() && !schema.as_object().map_or(true, |o| o.is_empty()) {
+        let extraction = registry.firecrawl.extract_with_schema(&html, schema);
+        Ok(serde_json::to_string_pretty(&extraction)?)
+    } else {
+        let document = scraper::Html::parse_document(&html);
+        let title_sel = scraper::Selector::parse("title").unwrap();
+        let title = document.select(&title_sel).next()
+            .map(|e| e.text().collect::<String>())
+            .unwrap_or_else(|| "No Title".to_string());
+
+        let body_sel = scraper::Selector::parse("body").unwrap();
+        let body_text: String = document.select(&body_sel).next()
+            .map(|e| e.text().collect::<String>())
+            .unwrap_or_default();
+        let word_count = body_text.split_whitespace().count();
+
+        let response = json!({
+            "success": true,
+            "data": {
+                "title": title,
+                "word_count": word_count,
+                "extracted_content_snippet": body_text.chars().take(500).collect::<String>()
+            }
+        });
+        Ok(serde_json::to_string_pretty(&response)?)
     }
 }

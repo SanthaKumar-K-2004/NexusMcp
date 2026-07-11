@@ -1,0 +1,10 @@
+target/
+*.db
+*.db-journal
+.env
+.DS_Store
+.idea/
+.vscode/
+*.log
+/tmp
+/Cargo.toml.orig

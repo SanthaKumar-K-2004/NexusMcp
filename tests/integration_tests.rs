@@ -198,7 +198,12 @@ async fn test_tab_management() -> Result<(), anyhow::Error> {
     assert_eq!(new_tab_page.title, "About Page");
     assert_eq!(session.pages.len(), 2);
 
-    // Close current tab
+    // Close current tab (leaves the first tab open)
+    session.close_current_tab()?;
+    assert_eq!(session.pages.len(), 1);
+    assert!(session.tab.is_some());
+
+    // Close the last tab (clears everything)
     session.close_current_tab()?;
     assert!(session.tab.is_none());
     assert!(session.pages.is_empty());
@@ -358,11 +363,14 @@ async fn test_stagehand_multi_candidates() {
 // ==========================================================================
 #[tokio::test]
 async fn test_profile_persistence_roundtrip() -> Result<(), anyhow::Error> {
-    let db_path = "/tmp/test_nexusmcp_profiles.db";
+    let mut db_path = std::env::temp_dir();
+    db_path.push("test_nexusmcp_profiles.db");
+    let db_path_str = db_path.to_str().unwrap().to_string();
+    
     // Clean up from previous runs
-    let _ = std::fs::remove_file(db_path);
+    let _ = std::fs::remove_file(&db_path_str);
 
-    let pm = ProfileManager::new(db_path)?;
+    let pm = ProfileManager::new(&db_path_str)?;
 
     // Create a profile
     let profile = pm.create_profile("test-agent", Some("socks5://proxy:1080"), "high")?;
@@ -377,7 +385,7 @@ async fn test_profile_persistence_roundtrip() -> Result<(), anyhow::Error> {
     assert_eq!(loaded.proxy, Some("socks5://proxy:1080".to_string()));
 
     // Clean up
-    let _ = std::fs::remove_file(db_path);
+    let _ = std::fs::remove_file(&db_path_str);
     Ok(())
 }
 

@@ -55,11 +55,11 @@ pub async fn start_mcp_server(stealth: bool, proxy: Option<String>) -> anyhow::R
             }
         };
 
-        let response = handle_request(&request, &mut registry).await;
-
-        let response_json = serde_json::to_string(&response)?;
-        writeln!(stdout, "{}", response_json)?;
-        stdout.flush()?;
+        if let Some(response) = handle_request(&request, &mut registry).await {
+            let response_json = serde_json::to_string(&response)?;
+            writeln!(stdout, "{}", response_json)?;
+            stdout.flush()?;
+        }
     }
 
     Ok(())
@@ -68,8 +68,14 @@ pub async fn start_mcp_server(stealth: bool, proxy: Option<String>) -> anyhow::R
 async fn handle_request(
     request: &JsonRpcRequest,
     registry: &mut ToolRegistry,
-) -> JsonRpcResponse {
-    match request.method.as_str() {
+) -> Option<JsonRpcResponse> {
+    // If request.id is None, it is a JSON-RPC notification. We must NOT respond.
+    if request.id.is_none() {
+        info!("Received notification method: {}", request.method);
+        return None;
+    }
+
+    let response = match request.method.as_str() {
         "initialize" => JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             id: request.id.clone(),
@@ -113,16 +119,22 @@ async fn handle_request(
                             })),
                             error: None,
                         },
-                        Err(e) => JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id: request.id.clone(),
-                            result: None,
-                            error: Some(JsonRpcError {
-                                code: -32603,
-                                message: e.to_string(),
-                                data: None,
-                            }),
-                        },
+                        Err(e) => {
+                            // Protocol compliance: tool call execution failures must be returned 
+                            // in a successful JSON-RPC response with isError: true inside result
+                            JsonRpcResponse {
+                                jsonrpc: "2.0".to_string(),
+                                id: request.id.clone(),
+                                result: Some(json!({
+                                    "content": [{
+                                        "type": "text",
+                                        "text": format!("Error executing tool: {}", e)
+                                    }],
+                                    "isError": true
+                                })),
+                                error: None,
+                            }
+                        }
                     }
                 } else {
                     error_response(request, -32602, "Missing tool name")
@@ -133,7 +145,9 @@ async fn handle_request(
         }
 
         _ => error_response(request, -32601, "Method not found"),
-    }
+    };
+
+    Some(response)
 }
 
 fn error_response(request: &JsonRpcRequest, code: i32, message: &str) -> JsonRpcResponse {

@@ -1,23 +1,27 @@
 // Enterprise Observability Module
 use prometheus::{IntCounter, IntGauge, Histogram, Opts};
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 
-lazy_static! {
-    pub static ref NAVIGATION_COUNTER: IntCounter = IntCounter::new(
+pub static NAVIGATION_COUNTER: LazyLock<IntCounter> = LazyLock::new(|| {
+    IntCounter::new(
         "nexusmcp_navigations_total", 
         "Total number of navigations"
-    ).unwrap();
+    ).unwrap()
+});
 
-    pub static ref ACTIVE_SESSIONS: IntGauge = IntGauge::new(
+pub static ACTIVE_SESSIONS: LazyLock<IntGauge> = LazyLock::new(|| {
+    IntGauge::new(
         "nexusmcp_active_sessions", 
         "Current active browser sessions"
-    ).unwrap();
+    ).unwrap()
+});
 
-    pub static ref PAGE_LOAD_TIME: Histogram = Histogram::with_opts(
+pub static PAGE_LOAD_TIME: LazyLock<Histogram> = LazyLock::new(|| {
+    Histogram::with_opts(
         Opts::new("nexusmcp_page_load_time_seconds", "Page load time in seconds")
             .into()
-    ).unwrap();
-}
+    ).unwrap()
+});
 
 pub fn init_metrics() {
     let _ = prometheus::register(Box::new(NAVIGATION_COUNTER.clone()));

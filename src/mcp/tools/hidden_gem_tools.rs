@@ -1,8 +1,7 @@
-use super::Tool;
-use anyhow::Result;
+use super::{Tool, ToolRegistry};
 use serde_json::{json, Value};
+use anyhow::Result;
 
-/// Stagehand-style element targeting using natural language
 pub struct BrowserFindElementTool;
 impl BrowserFindElementTool { pub fn new() -> Self { Self } }
 
@@ -24,7 +23,6 @@ impl Tool for BrowserFindElementTool {
     }
 }
 
-/// Trafilatura-style article extraction
 pub struct BrowserTrafilaturaTool;
 impl BrowserTrafilaturaTool { pub fn new() -> Self { Self } }
 
@@ -40,7 +38,6 @@ impl Tool for BrowserTrafilaturaTool {
     }
 }
 
-/// Firecrawl-style structured extraction with schema
 pub struct BrowserFirecrawlExtractTool;
 impl BrowserFirecrawlExtractTool { pub fn new() -> Self { Self } }
 
@@ -59,4 +56,26 @@ impl Tool for BrowserFirecrawlExtractTool {
     async fn call(&self, _arguments: Value) -> Result<String> {
         Err(anyhow::anyhow!("Routed via ToolRegistry::call_tool"))
     }
+}
+
+// ==================== HANDLER IMPLEMENTATIONS ====================
+
+pub async fn handle_find_element(registry: &mut ToolRegistry, arguments: Value) -> Result<String> {
+    let instruction = arguments.get("instruction").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing instruction"))?;
+
+    let html = registry.get_active_html()?;
+    let res = registry.stagehand.find_element(instruction, &html);
+    Ok(serde_json::to_string_pretty(&res)?)
+}
+
+pub async fn handle_trafilatura(registry: &mut ToolRegistry, _arguments: Value) -> Result<String> {
+    let html = registry.get_active_html()?;
+    let session_id = registry.get_active_session_id().unwrap_or_default();
+    let url = registry.session_manager.get_session(&session_id)
+        .and_then(|s| s.current_page_state().map(|p| p.url.clone()))
+        .unwrap_or_else(|| "unknown".to_string());
+
+    let extraction = registry.trafilatura.extract_content(&html, &url);
+    Ok(serde_json::to_string_pretty(&extraction)?)
 }
