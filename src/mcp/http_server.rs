@@ -9,13 +9,13 @@ use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
 
 use crate::mcp::tools::ToolRegistry;
-use crate::observability;
+
 
 pub struct AppState {
     registry: Arc<Mutex<ToolRegistry>>,
 }
 
-pub async fn start_http_server(port: u16, stealth: bool) -> anyhow::Result<()> {
+pub async fn start_http_server(port: u16, _stealth: bool) -> anyhow::Result<()> {
     let registry = ToolRegistry::new();
 
     let state = Arc::new(AppState {

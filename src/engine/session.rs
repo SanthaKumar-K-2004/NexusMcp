@@ -266,16 +266,6 @@ impl BrowserSession {
         Err(anyhow::anyhow!("No active page to reload"))
     }
 
-    fn generate_realistic_title(&self, url: &str) -> String {
-        if url.contains("github.com") {
-            "GitHub".to_string()
-        } else if url.contains("news.ycombinator.com") {
-            "Hacker News".to_string()
-        } else {
-            format!("Page - {}", url.split('/').last().unwrap_or("Home"))
-        }
-    }
-
     /// Get current page state
     pub fn current_page_state(&self) -> Option<&PageState> {
         match &self.current_page {

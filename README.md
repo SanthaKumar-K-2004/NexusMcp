@@ -5,14 +5,14 @@
 <h1 align="center">⚡ NexusMCP ⚡</h1>
 
 <p align="center">
-  <strong>The lightest, fastest, and most robust enterprise-grade browser Model Context Protocol (MCP) server for AI agents.</strong>
+  <strong>A lightweight browser MCP server for AI agents, built in Rust.</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language Rust">
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License Apache 2.0">
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome">
-  <img src="https://img.shields.io/badge/Platform-Arch%20Linux%20%7C%20Ubuntu%20%7C%20macOS-blueviolet.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Status-Alpha-yellow.svg" alt="Status Alpha">
 </p>
 
 <p align="center">
@@ -21,125 +21,162 @@
 
 ---
 
-## 📖 Table of Contents
-1. [⚡ Quick Start: One-Command Setup](#-quick-start-one-command-setup)
-2. [🎯 Features & Capabilities](#-features--capabilities)
-3. [🏗️ Architecture Flow](#️-architecture-flow)
-4. [🛠️ Client Configuration](#️-client-configuration)
-5. [💻 Manual Installation](#-manual-installation)
-6. [📈 Prometheus Observability](#-prometheus-observability)
-7. [🤝 Developed By](#-developed-by)
-8. [📄 License](#-license)
+## What This Is
+
+NexusMCP is a **Model Context Protocol (MCP) server** that gives AI agents (Claude, Cursor, etc.) real browser control via headless Chromium. It uses the `headless_chrome` crate to drive a real browser through the Chrome DevTools Protocol.
+
+### What Works Today
+
+| Feature | Status | How |
+|---------|--------|-----|
+| **Real browser navigation** | ✅ Working | `headless_chrome` → Chromium CDP |
+| **Real JavaScript execution** | ✅ Working | `tab.evaluate()` via CDP |
+| **Real click / form fill** | ✅ Working | `tab.find_element()` → `.click()` / `.type_into()` |
+| **Real screenshot (PNG)** | ✅ Working | `tab.capture_screenshot()` |
+| **Real PDF generation** | ✅ Working | `tab.print_to_pdf()` |
+| **Real page content → Markdown** | ✅ Working | `tab.get_content()` → `html2md` |
+| **Real link extraction** | ✅ Working | `scraper` on live DOM |
+| **Back / Reload / Tabs** | ✅ Working | CDP `history.back()`, `tab.reload()`, `browser.new_tab()` |
+| **Element wait (selector/text)** | ✅ Working | `tab.wait_for_element_with_custom_timeout()` |
+| **Structured data extraction** | ✅ Working | Firecrawl-style regex + scraper on live HTML |
+| **Semantic element finding** | ✅ Working | Stagehand-style weighted DOM scoring |
+| **Article content extraction** | ✅ Working | Trafilatura-style boilerplate stripping via scraper |
+| **Bot protection detection** | ✅ Working | Crawl4AI-style HTML marker analysis |
+| **Stealth fingerprint injection** | ✅ Working | CDP scripts: webdriver, UA, WebGL, plugins |
+| **Profile persistence (SQLite)** | ✅ Working | Create/load profiles with rusqlite |
+| **Prometheus metrics** | ✅ Working | `nexusmcp_navigations_total`, `active_sessions`, `page_load_time_seconds` |
+| **MCP stdio server** | ✅ Working | JSON-RPC 2.0 over stdin/stdout |
+| **HTTP server** | ✅ Working | Axum on configurable port |
+| **Page observation (DOM analysis)** | ✅ Working | Inventories forms, inputs, buttons, links on live page |
+| **Self-healing navigation** | ✅ Working | Retries with escalating stealth if bot protection detected |
+
+### What Is NOT Implemented Yet (Roadmap)
+
+- **Cookie persistence** across sessions (profile stores metadata only, not cookies)
+- **Proxy rotation** (config accepted but not wired to browser launch)
+- **Multi-tab management** (currently drives one tab per session)
+- **AI/LLM-powered element understanding** (Stagehand uses DOM scoring, not vision/LLM)
+- **Real CAPTCHA solving** (detection works, but solving requires external service)
 
 ---
 
-## ⚡ Quick Start: One-Command Setup
-
-NexusMCP comes with an **automatic zero-config installer** (`setup.py`). It compiles the release binary, auto-detects configuration directories, and safely updates settings for **Claude Desktop, Cursor, and VS Code (Cline/Roo Code)** without disrupting existing MCP setups.
-
-Run this simple command in your terminal:
+## Quick Start
 
 ```bash
 git clone https://github.com/SanthaKumar-K-2004/NexusMcp.git && cd NexusMcp && python3 setup.py
 ```
 
----
+Or manually:
 
-## 🎯 Features & Capabilities
-
-NexusMCP replaces slow, heavy, mock-based browser integrations with a **native Rust DevTools engine**:
-
-- 🌐 **100% Real Browser Control**: Leverages actual headless Chromium/V8 instances via Chrome DevTools Protocol (`headless_chrome`).
-- 🛡️ **Anti-Bot & Stealth Engine**: Spoofs `navigator.webdriver`, User-Agents, locale, and timezone settings on document load to evade Cloudflare, Akamai, and web application firewalls.
-- 🩺 **Self-Healing Navigation**: Retries with rotative User-Agents and automated CDP stealth scripts if a block or CAPTCHA is detected.
-- 🎯 **Stagehand Semantic Locators**: Evaluates element selectors dynamically based on weighted parameters (placeholder, accessibility labels, class, name) to locate target elements using natural language.
-- 🕷️ **Structured Firecrawl-style Extraction**: Extract emails, prices, links, and schema-specific details using high-speed compiled regular expressions.
-- 💾 **SQLite Profiles**: Secure cookie and configuration persistence across browsing sessions.
-- 📊 **Observability & Metrics**: Exposes Prometheus metrics (`active_sessions`, `navigation_counter`, `page_load_time_seconds`) out of the box.
+```bash
+cargo build --release
+./target/release/nexusmcp mcp --stealth        # MCP stdio mode
+./target/release/nexusmcp serve --port 3000     # HTTP server mode
+```
 
 ---
 
-## 🏗️ Architecture Flow
+## Architecture
 
 ```mermaid
 graph TD
     Client[AI Client: Claude, Cursor, Roo Code] -->|Stdio/HTTP JSON-RPC| NexusMCP[NexusMCP Server]
     subgraph NexusMCP Core
-        SM[Session Manager] -->|Browser Context| Tab[Chromium Tab Instance]
-        Tab -->|CDP| Stealth[Anti-Bot Evasions]
-        Tab -->|DOM Scrape| Stagehand[Stagehand Semantic Locators]
-        Tab -->|Page Body| Firecrawl[Firecrawl Schema Regex]
+        SM[Session Manager] -->|Browser Context| Tab[Chromium Tab via CDP]
+        Tab -->|DOM Scrape| Stagehand[Stagehand DOM Scoring]
+        Tab -->|Page Body| Firecrawl[Firecrawl Regex Extraction]
+        Tab -->|HTML Content| Trafilatura[Trafilatura Article Extractor]
+        Tab -->|HTML Analysis| Crawl4AI[Bot Protection Detection]
+        Tab -->|CDP Scripts| Stealth[Fingerprint Evasion]
         SM -->|Persistent DB| SQLite[(SQLite Profile Store)]
         SM -->|Observability| Prom[Prometheus Registry]
     end
-    Tab -->|Headless Control| Chrome[Headless Chromium / Chrome]
+    Tab -->|headless_chrome| Chrome[Headless Chromium]
 ```
 
 ---
 
-## 🛠️ Client Configuration
+## Available Tools (27 total)
 
-### 1. Claude Desktop & VS Code (Cline / Roo Code)
-The setup script completes this automatically. The generated JSON configuration looks like this:
+| Tool | Description |
+|------|-------------|
+| `browser_navigate` | Navigate to a URL with stealth and retry |
+| `browser_evaluate` | Execute JavaScript via CDP |
+| `browser_click` | Click an element by CSS selector |
+| `browser_fill_form` | Fill form fields (selector → value) |
+| `browser_wait_for` | Wait for element/text/timeout |
+| `browser_back` | Navigate back in history |
+| `browser_reload` | Reload current page |
+| `browser_tab_new` | Open a new tab |
+| `browser_tab_switch` | Switch to a tab by ID |
+| `browser_tab_close` | Close current tab |
+| `browser_markdown` | Extract Markdown from live page |
+| `browser_screenshot` | Capture PNG screenshot |
+| `browser_pdf` | Generate PDF of current page |
+| `browser_links` | Extract all links from page |
+| `browser_extract` | Extract structured data |
+| `browser_firecrawl_extract` | Schema-driven extraction (emails, prices, etc.) |
+| `browser_find_element` | Natural language element targeting |
+| `browser_trafilatura` | Article content extraction |
+| `browser_observe` | DOM analysis — inventory interactive elements |
+| `browser_act` | Goal-directed action (find + click/type) |
+| `browser_stealth_rotate` | Rotate browser fingerprint via CDP |
+| `browser_create_profile` | Create persistent profile (SQLite) |
+| `browser_load_profile` | Load profile by ID |
+| `browser_smart_retry` | Retry with escalating stealth |
+| `browser_handle_captcha` | Detect bot protection |
+| `browser_health_check` | Server health status |
+| `browser_research` | Parallel HTTP fetch multiple URLs |
+
+---
+
+## Client Configuration
+
+### Claude Desktop / VS Code (Cline / Roo Code)
+
+The `setup.py` script handles this automatically. The config looks like:
 
 ```json
 {
   "mcpServers": {
     "nexusmcp": {
-      "command": "/absolute/path/to/nexusmcp/target/release/nexusmcp",
+      "command": "/path/to/nexusmcp/target/release/nexusmcp",
       "args": ["mcp", "--stealth"]
     }
   }
 }
 ```
 
-### 2. Cursor
-1. Navigate to **Settings** ➡️ **Cursor Settings** ➡️ **Features** ➡️ **MCP**.
-2. Click **+ Add New MCP Server**.
-3. Apply the parameters:
-   - **Name**: `nexusmcp`
-   - **Type**: `command`
-   - **Command**: `/absolute/path/to/nexusmcp/target/release/nexusmcp`
-   - **Arguments**: `mcp --stealth`
+### Cursor
+
+Settings → Cursor Settings → Features → MCP → Add New MCP Server:
+- **Name**: `nexusmcp`
+- **Type**: `command`
+- **Command**: `/path/to/nexusmcp/target/release/nexusmcp`
+- **Arguments**: `mcp --stealth`
 
 ---
 
-## 💻 Manual Installation
-
-```bash
-# 1. Compile release binary
-cargo build --release
-
-# 2. Run MCP stdio server
-./target/release/nexusmcp mcp --stealth
-
-# 3. Or run as standalone HTTP server
-./target/release/nexusmcp serve --port 3000 --stealth
-```
-
----
-
-## 📈 Prometheus Observability
-
-NexusMCP exposes a Prometheus scraper endpoint on HTTP server mode:
+## Prometheus Metrics
 
 ```bash
 curl http://localhost:3000/metrics
 ```
 
-Available metrics:
-*   `nexusmcp_active_sessions`: Gauge of currently active Chromium tabs.
-*   `nexusmcp_navigation_counter`: Total page navigations triggered.
-*   `nexusmcp_page_load_time_seconds`: Page load time durations histogram.
+- `nexusmcp_active_sessions` — current active browser sessions
+- `nexusmcp_navigations_total` — total page navigations
+- `nexusmcp_page_load_time_seconds` — page load time histogram
 
 ---
 
-## 🤝 Developed By
+## Running Tests
 
-Designed, written, and maintained by **[Santhakumar K](https://github.com/SanthaKumar-K-2004)**. Contributions, bug reports, and pull requests are welcome!
+```bash
+cargo test --test integration_tests -- --nocapture
+```
 
 ---
 
-## 📄 License
+## License
 
 Apache 2.0 License.

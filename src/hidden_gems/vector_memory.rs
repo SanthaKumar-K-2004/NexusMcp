@@ -1,5 +1,5 @@
 // Persistent Vector Memory using SQLite
-use rusqlite::{Connection, Result as SqlResult};
+use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 

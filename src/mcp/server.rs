@@ -6,6 +6,7 @@ use tracing::info;
 use super::tools::ToolRegistry;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct JsonRpcRequest {
     jsonrpc: String,
     id: Option<Value>,
